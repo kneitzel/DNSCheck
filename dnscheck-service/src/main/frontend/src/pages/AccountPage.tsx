@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Alert, Box, Button, Paper, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, Paper, Stack, TextField, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
-import { AuthService } from "../generated";
+import { AccountService, AuthService, type AccountSecurityResponse } from "../generated";
 import { RightsSummaryPanel } from "../components/RightsSummaryPanel";
 
 export function AccountPage() {
@@ -10,9 +10,21 @@ export function AccountPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaMessage, setMfaMessage] = useState<string | null>(null);
+  const [mfaRecoveryCodes, setMfaRecoveryCodes] = useState<string[]>([]);
+  const [security, setSecurity] = useState<AccountSecurityResponse | null>(null);
   const [rights, setRights] = useState<Awaited<ReturnType<typeof AuthService.getMyRights>> | null>(
     null,
   );
+
+  const loadSecurity = async () => {
+    const response = await AccountService.getAccountSecurity();
+    setSecurity(response);
+    if (response.mfaStatus !== "pending") {
+      setMfaRecoveryCodes([]);
+    }
+  };
 
   const loadRights = async () => {
     const response = await AuthService.getMyRights();
@@ -21,6 +33,7 @@ export function AccountPage() {
 
   useEffect(() => {
     void loadRights();
+    void loadSecurity();
   }, []);
 
   const changePassword = async () => {
@@ -39,11 +52,116 @@ export function AccountPage() {
     }
   };
 
+  const startMfaEnrollment = async () => {
+    setError(null);
+    setSuccess(null);
+    setMfaMessage(null);
+    setLoading(true);
+    try {
+      const response = await AccountService.startAccountMfaEnrollment();
+      setSecurity(response);
+      setMfaRecoveryCodes(response.recoveryCodes ?? []);
+      setMfaCode("");
+      setMfaMessage("MFA enrollment started. Add the setup key to your authenticator app, then confirm the code.");
+    } catch {
+      setError("Could not start MFA enrollment.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const confirmMfaEnrollment = async () => {
+    setError(null);
+    setSuccess(null);
+    setMfaMessage(null);
+    setLoading(true);
+    try {
+      const response = await AccountService.confirmAccountMfaEnrollment({ code: mfaCode });
+      setSecurity(response);
+      setMfaCode("");
+      setMfaRecoveryCodes([]);
+      setMfaMessage("MFA enrollment confirmed.");
+    } catch {
+      setError("Could not confirm MFA enrollment. Check the verification code.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  let statusLabel = "Disabled";
+  if (security?.mfaStatus === "active") {
+    statusLabel = "Active";
+  } else if (security?.mfaStatus === "pending") {
+    statusLabel = "Pending";
+  }
+
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
         Account
       </Typography>
+
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Account security
+        </Typography>
+        <Stack direction="row" spacing={1} sx={{ mb: 2 }} alignItems="center">
+          <Typography variant="body2">MFA status:</Typography>
+          <Chip label={statusLabel} color={security?.mfaStatus === "active" ? "success" : "default"} />
+        </Stack>
+        {security?.mfaStatus === "pending" && security.setupKey && (
+          <>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              Add this setup key to your authenticator app:
+            </Typography>
+            <Paper variant="outlined" sx={{ p: 2, mb: 2, fontFamily: "monospace", overflowX: "auto" }}>
+              {security.otpauthUri ?? security.setupKey}
+            </Paper>
+          </>
+        )}
+        {mfaRecoveryCodes.length > 0 && (
+          <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Recovery codes
+            </Typography>
+            <Stack spacing={0.5}>
+              {mfaRecoveryCodes.map((code) => (
+                <Typography key={code} variant="body2" sx={{ fontFamily: "monospace" }}>
+                  {code}
+                </Typography>
+              ))}
+            </Stack>
+          </Paper>
+        )}
+        {mfaMessage && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            {mfaMessage}
+          </Alert>
+        )}
+        <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap", alignItems: "center" }}>
+          <Button
+            variant="outlined"
+            disabled={loading || security?.mfaStatus === "pending" || security?.mfaStatus === "active"}
+            onClick={() => void startMfaEnrollment()}
+          >
+            Start MFA enrollment
+          </Button>
+          <TextField
+            label="Verification code"
+            size="small"
+            value={mfaCode}
+            onChange={(event) => setMfaCode(event.target.value)}
+            disabled={loading || security?.mfaStatus !== "pending"}
+          />
+          <Button
+            variant="contained"
+            disabled={loading || security?.mfaStatus !== "pending" || !mfaCode}
+            onClick={() => void confirmMfaEnrollment()}
+          >
+            Confirm enrollment
+          </Button>
+        </Stack>
+      </Paper>
 
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" gutterBottom>

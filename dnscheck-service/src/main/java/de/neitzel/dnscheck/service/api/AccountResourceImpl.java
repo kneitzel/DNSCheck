@@ -3,11 +3,14 @@ package de.neitzel.dnscheck.service.api;
 import de.neitzel.dnscheck.service.api.generated.model.AccountKeyDetail;
 import de.neitzel.dnscheck.service.api.generated.model.AccountKeyListResponse;
 import de.neitzel.dnscheck.service.api.generated.model.AccountKeySummary;
+import de.neitzel.dnscheck.service.api.generated.model.AccountSecurityResponse;
+import de.neitzel.dnscheck.service.api.generated.model.ConfirmAccountMfaEnrollmentRequest;
 import de.neitzel.dnscheck.service.api.generated.model.ReplaceAccountKeyRequest;
 import de.neitzel.dnscheck.service.api.generated.model.UpdateAccountKeyRequest;
 import de.neitzel.dnscheck.service.api.generated.model.UploadAccountKeyRequest;
 import de.neitzel.dnscheck.service.api.generated.resources.AccountResource;
 import de.neitzel.dnscheck.service.auth.OperatorRightsService;
+import de.neitzel.dnscheck.service.auth.OperatorMfaService;
 import de.neitzel.dnscheck.service.auth.entity.Operator;
 import de.neitzel.dnscheck.service.keys.PersonalKeyService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -23,6 +26,24 @@ public class AccountResourceImpl implements AccountResource {
 
     @Inject
     PersonalKeyService personalKeyService;
+
+    @Inject
+    OperatorMfaService operatorMfaService;
+
+    @Override
+    public AccountSecurityResponse getAccountSecurity() {
+        return operatorMfaService.getCurrentSecurity();
+    }
+
+    @Override
+    public AccountSecurityResponse startAccountMfaEnrollment() {
+        return operatorMfaService.startEnrollment();
+    }
+
+    @Override
+    public AccountSecurityResponse confirmAccountMfaEnrollment(ConfirmAccountMfaEnrollmentRequest request) {
+        return operatorMfaService.confirmEnrollment(request);
+    }
 
     @Override
     public AccountKeyListResponse listAccountKeys() {

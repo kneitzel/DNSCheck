@@ -4,6 +4,24 @@ An infrastructure tool that verifies DNS records against a known desired state a
 
 ## Language
 
+### Security
+
+**Multi-factor authentication**:
+An optional operator sign-in safeguard that requires a password plus a second verification factor before a session is created. In DNSCheck, this is the canonical term; "2FA" is a shorthand.
+_Avoid_: 2FA, second-factor login
+
+**MFA enrollment**:
+The operator's pending setup state while a second verification factor is being added and confirmed. Enrollment becomes active only after verification succeeds.
+_Avoid_: Setup flow, activation
+
+**Recovery code**:
+A one-time backup code used to regain access when the second verification factor is unavailable.
+_Avoid_: Backup code, emergency code
+
+**MFA reset**:
+An admin action that clears an operator's MFA enrollment so the operator can sign in with password only and re-enroll.
+_Avoid_: Disable MFA, force reset
+
 **DNSCheck**:
 The reconciliation tool itself — checks live DNS against expected records and repairs mismatches. Delivered as a core library, a Quarkus service with UI, and a CLI for direct operator use.
 _Avoid_: Monitor, sync agent, DNS bot

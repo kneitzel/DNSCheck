@@ -88,6 +88,68 @@ paths:
                 $ref: "#/components/schemas/RightsSummaryResponse"
         "401":
           description: Not authenticated
+  /api/v1/account/security:
+    get:
+      tags:
+        - Account
+      operationId: getAccountSecurity
+      summary: Current operator account security status
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Account security status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountSecurityResponse"
+        "401":
+          description: Not authenticated
+    post:
+      tags:
+        - Account
+      operationId: startAccountMfaEnrollment
+      summary: Start MFA enrollment for the current operator
+      security:
+        - session: []
+      responses:
+        "200":
+          description: MFA enrollment started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountSecurityResponse"
+        "401":
+          description: Not authenticated
+        "409":
+          description: MFA is already pending or active
+  /api/v1/account/security/mfa/confirm:
+    post:
+      tags:
+        - Account
+      operationId: confirmAccountMfaEnrollment
+      summary: Confirm MFA enrollment with a verification code
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmAccountMfaEnrollmentRequest"
+      responses:
+        "200":
+          description: MFA enrollment confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountSecurityResponse"
+        "400":
+          description: MFA enrollment is not pending
+        "401":
+          description: Not authenticated
+        "409":
+          description: MFA verification code is invalid
   /api/v1/account/keys:
     get:
       tags:
@@ -1660,6 +1722,34 @@ components:
         newPassword:
           type: string
           format: password
+    AccountMfaStatus:
+      type: string
+      enum:
+        - disabled
+        - pending
+        - active
+    AccountSecurityResponse:
+      type: object
+      required:
+        - mfaStatus
+      properties:
+        mfaStatus:
+          $ref: "#/components/schemas/AccountMfaStatus"
+        setupKey:
+          type: string
+        otpauthUri:
+          type: string
+        recoveryCodes:
+          type: array
+          items:
+            type: string
+    ConfirmAccountMfaEnrollmentRequest:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: string
     RightSourceType:
       type: string
       enum:
