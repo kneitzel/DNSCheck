@@ -124,6 +124,9 @@ export function AccountPage() {
             <Typography variant="subtitle2" gutterBottom>
               Recovery codes
             </Typography>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              Save these now. They are shown once and can be used instead of your authenticator app.
+            </Typography>
             <Stack spacing={0.5}>
               {mfaRecoveryCodes.map((code) => (
                 <Typography key={code} variant="body2" sx={{ fontFamily: "monospace" }}>

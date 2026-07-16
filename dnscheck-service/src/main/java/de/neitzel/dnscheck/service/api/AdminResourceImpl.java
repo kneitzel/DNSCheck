@@ -38,17 +38,22 @@ import java.util.List;
 @Transactional
 public class AdminResourceImpl implements AdminResource {
 
-    @Inject
-    AdminService adminService;
+    private final AdminService adminService;
+    private final RightsSummaryService rightsSummaryService;
+    private final GroupKeyService groupKeyService;
+    private final OperatorRightsService operatorRightsService;
 
     @Inject
-    RightsSummaryService rightsSummaryService;
-
-    @Inject
-    GroupKeyService groupKeyService;
-
-    @Inject
-    OperatorRightsService operatorRightsService;
+    public AdminResourceImpl(
+            AdminService adminService,
+            RightsSummaryService rightsSummaryService,
+            GroupKeyService groupKeyService,
+            OperatorRightsService operatorRightsService) {
+        this.adminService = adminService;
+        this.rightsSummaryService = rightsSummaryService;
+        this.groupKeyService = groupKeyService;
+        this.operatorRightsService = operatorRightsService;
+    }
 
     @Override
     public OperatorSummary getOperator(Long operatorId) {
@@ -70,6 +75,11 @@ public class AdminResourceImpl implements AdminResource {
     public OperatorSummary updateOperator(Long operatorId, UpdateOperatorRequest request) {
         return AdminApiMapper.toOperatorSummary(
                 adminService.updateOperator(operatorId, request.getEnabled(), request.getPassword()));
+    }
+
+    @Override
+    public OperatorSummary resetOperatorMfa(Long operatorId) {
+        return AdminApiMapper.toOperatorSummary(adminService.resetOperatorMfa(operatorId));
     }
 
     @Override

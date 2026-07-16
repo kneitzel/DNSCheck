@@ -4,7 +4,7 @@
 
 **Blocked by:** 23 — MFA enrollment and status
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Login requires the second verification factor after MFA enrollment is active
-- [ ] Existing sessions remain valid after MFA is enabled
+- [x] Login requires the second verification factor after MFA enrollment is active
+- [x] Existing sessions remain valid after MFA is enabled

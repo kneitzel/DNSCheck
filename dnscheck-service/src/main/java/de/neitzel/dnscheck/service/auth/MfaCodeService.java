@@ -1,6 +1,7 @@
 package de.neitzel.dnscheck.service.auth;
 
 import io.quarkus.elytron.security.common.BcryptUtil;
+import jakarta.enterprise.context.ApplicationScoped;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+@ApplicationScoped
 public final class MfaCodeService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -20,6 +22,7 @@ public final class MfaCodeService {
     private static final int DIGITS = 6;
     private static final int TIME_STEP_SECONDS = 30;
     private static final int SECRET_BYTES = 20;
+    private static final String ALGORITHM = "HmacSHA1";
     private static final char[] BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".toCharArray();
 
     public String generateSecret() {
@@ -55,8 +58,8 @@ public final class MfaCodeService {
         byte[] decodedSecret = decodeBase32(secret);
         byte[] timeBytes = ByteBuffer.allocate(8).putLong(timeStep).array();
         try {
-            Mac mac = Mac.getInstance("HmacSHA1");
-            mac.init(new SecretKeySpec(decodedSecret, "HmacSHA1"));
+            Mac mac = Mac.getInstance(ALGORITHM);
+            mac.init(new SecretKeySpec(decodedSecret, ALGORITHM));
             byte[] hash = mac.doFinal(timeBytes);
             int offset = hash[hash.length - 1] & 0x0f;
             int binary = ((hash[offset] & 0x7f) << 24)
@@ -79,11 +82,25 @@ public final class MfaCodeService {
     }
 
     public String hashRecoveryCode(String recoveryCode) {
-        return BcryptUtil.bcryptHash(recoveryCode);
+        return BcryptUtil.bcryptHash(normalizeRecoveryCode(recoveryCode));
     }
 
     public boolean matchesRecoveryCode(String candidate, String hash) {
-        return BcryptUtil.matches(candidate, hash);
+        if (candidate == null || hash == null || hash.isBlank()) {
+            return false;
+        }
+        String normalized = normalizeRecoveryCode(candidate);
+        if (normalized.isEmpty()) {
+            return false;
+        }
+        return BcryptUtil.matches(normalized, hash);
+    }
+
+    static String normalizeRecoveryCode(String recoveryCode) {
+        if (recoveryCode == null) {
+            return "";
+        }
+        return recoveryCode.replaceAll("[\\s-]+", "").toUpperCase(Locale.ROOT);
     }
 
     private static String generateRecoveryCode() {

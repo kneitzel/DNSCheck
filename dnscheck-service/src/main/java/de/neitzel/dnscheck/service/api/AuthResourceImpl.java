@@ -23,25 +23,34 @@ import jakarta.ws.rs.core.Response;
 @Transactional
 public class AuthResourceImpl implements AuthResource {
 
-    @Inject
-    OperatorAuthService operatorAuthService;
+    private final OperatorAuthService operatorAuthService;
+
+    private final OperatorRightsService operatorRightsService;
+
+    private final RightsSummaryService rightsSummaryService;
+
+    private final SessionService sessionService;
+
+    private final RoutingContext routingContext;
 
     @Inject
-    OperatorRightsService operatorRightsService;
-
-    @Inject
-    RightsSummaryService rightsSummaryService;
-
-    @Inject
-    SessionService sessionService;
-
-    @Inject
-    RoutingContext routingContext;
+    public AuthResourceImpl(
+            OperatorAuthService operatorAuthService,
+            OperatorRightsService operatorRightsService,
+            RightsSummaryService rightsSummaryService,
+            SessionService sessionService,
+            RoutingContext routingContext) {
+        this.operatorAuthService = operatorAuthService;
+        this.operatorRightsService = operatorRightsService;
+        this.rightsSummaryService = rightsSummaryService;
+        this.sessionService = sessionService;
+        this.routingContext = routingContext;
+    }
 
     @Override
     public LoginResponse login(LoginRequest loginRequest) {
         Operator operator = operatorAuthService
-                .authenticate(loginRequest.getUsername(), loginRequest.getPassword())
+                .authenticate(loginRequest.getUsername(), loginRequest.getPassword(), loginRequest.getMfaCode())
                 .orElseThrow(() -> new NotAuthorizedException("Invalid credentials"));
 
         String sessionId = sessionService.createSession(operator.id, operator.username);

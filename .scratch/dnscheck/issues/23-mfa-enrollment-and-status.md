@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Enrollment starts in a pending state until the second factor is verified
-- [ ] Account security shows MFA as pending or active
+- [x] Enrollment starts in a pending state until the second factor is verified
+- [x] Account security shows MFA as pending or active

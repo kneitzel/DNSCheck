@@ -33,3 +33,7 @@ dnscheck-service/src/main/resources/openapi.yaml
 # Local config / secrets
 *.key
 .env
+
+# Local H2 / runtime data
+dnscheck-service/data/
+data/

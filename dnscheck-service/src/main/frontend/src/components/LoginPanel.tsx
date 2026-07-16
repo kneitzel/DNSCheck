@@ -9,23 +9,27 @@ import {
   Typography,
 } from "@mui/material";
 
-type LoginPanelProps = {
+type LoginPanelProps = Readonly<{
   username: string;
   password: string;
+  mfaCode: string;
   authError: string | null;
   loading: boolean;
   onUsernameChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
+  onMfaCodeChange: (value: string) => void;
   onLogin: () => void;
-};
+}>;
 
 export function LoginPanel({
   username,
   password,
+  mfaCode,
   authError,
   loading,
   onUsernameChange,
   onPasswordChange,
+  onMfaCodeChange,
   onLogin,
 }: LoginPanelProps) {
   return (
@@ -57,6 +61,14 @@ export function LoginPanel({
             margin="normal"
             value={password}
             onChange={(event) => onPasswordChange(event.target.value)}
+          />
+          <TextField
+            label="MFA code"
+            fullWidth
+            margin="normal"
+            value={mfaCode}
+            onChange={(event) => onMfaCodeChange(event.target.value)}
+            helperText="Use your authenticator code or a recovery code if MFA is enabled."
           />
           {authError && (
             <Typography color="error" variant="body2" sx={{ mt: 1 }}>

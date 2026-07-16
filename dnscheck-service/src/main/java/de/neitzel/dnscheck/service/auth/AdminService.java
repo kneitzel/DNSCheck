@@ -20,8 +20,14 @@ import java.util.List;
 @ApplicationScoped
 public class AdminService {
 
+    private final OperatorRightsService operatorRightsService;
+    private final OperatorMfaService operatorMfaService;
+
     @Inject
-    OperatorRightsService operatorRightsService;
+    public AdminService(OperatorRightsService operatorRightsService, OperatorMfaService operatorMfaService) {
+        this.operatorRightsService = operatorRightsService;
+        this.operatorMfaService = operatorMfaService;
+    }
 
     public List<Operator> listOperators() {
         requireAdmin();
@@ -60,6 +66,13 @@ public class AdminService {
         if (password != null && !password.isBlank()) {
             operator.passwordHash = BcryptUtil.bcryptHash(password);
         }
+        return operator;
+    }
+
+    public Operator resetOperatorMfa(Long operatorId) {
+        requireAdmin();
+        Operator operator = findOperator(operatorId);
+        operatorMfaService.resetEnrollment(operator);
         return operator;
     }
 

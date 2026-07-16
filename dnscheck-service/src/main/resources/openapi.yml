@@ -27,7 +27,7 @@ paths:
       tags:
         - Auth
       operationId: login
-      summary: Authenticate with username and password
+      summary: Authenticate with username, password, and optional MFA code
       requestBody:
         required: true
         content:
@@ -42,7 +42,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/LoginResponse"
         "401":
-          description: Invalid credentials
+          description: Invalid credentials or MFA challenge failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
   /api/v1/auth/logout:
     post:
       tags:
@@ -1073,6 +1077,34 @@ paths:
           description: Operator lacks admin access
         "404":
           description: Operator not found
+  /api/v1/admin/operators/{operatorId}/mfa/reset:
+    post:
+      tags:
+        - Admin
+      operationId: resetOperatorMfa
+      summary: Reset an operator's MFA enrollment and recovery material
+      security:
+        - session: []
+      parameters:
+        - name: operatorId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Operator updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorSummary"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Operator not found
   /api/v1/admin/operators/{operatorId}/rights:
     get:
       tags:
@@ -1703,6 +1735,8 @@ components:
         password:
           type: string
           format: password
+        mfaCode:
+          type: string
     LoginResponse:
       type: object
       required:

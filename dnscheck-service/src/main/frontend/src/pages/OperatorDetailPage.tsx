@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import {
+  Alert,
   Box,
   Button,
   Link,
@@ -15,6 +16,7 @@ import {
   type OperatorSummary,
   type RightsSummaryResponse,
 } from "../generated";
+import { formatApiError } from "../apiErrorMessage";
 import { GroupMembershipPanel } from "../components/GroupMembershipPanel";
 import { AddZoneGrantControls, RightsSummaryPanel, type ZoneCatalogOption } from "../components/RightsSummaryPanel";
 
@@ -27,6 +29,8 @@ export function OperatorDetailPage() {
   const [zoneOptions, setZoneOptions] = useState<ZoneCatalogOption[]>([]);
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) {
@@ -57,10 +61,33 @@ export function OperatorDetailPage() {
     if (!operator || !newPassword) {
       return;
     }
+    setActionError(null);
+    setActionSuccess(null);
     setLoading(true);
     try {
       await AdminService.updateOperator(operator.id, { password: newPassword });
       setNewPassword("");
+      setActionSuccess("Password updated.");
+    } catch (error) {
+      setActionError(formatApiError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetMfa = async () => {
+    if (!operator) {
+      return;
+    }
+    setActionError(null);
+    setActionSuccess(null);
+    setLoading(true);
+    try {
+      await AdminService.resetOperatorMfa(operator.id);
+      await load();
+      setActionSuccess("MFA enrollment and recovery codes cleared. The operator can sign in with password only until they enroll again.");
+    } catch (error) {
+      setActionError(formatApiError(error));
     } finally {
       setLoading(false);
     }
@@ -167,6 +194,28 @@ export function OperatorDetailPage() {
             Set password
           </Button>
         </Box>
+      </Paper>
+
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          MFA reset
+        </Typography>
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          This clears the operator's active MFA enrollment, recovery codes, and pending setup state.
+        </Alert>
+        {actionError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {actionError}
+          </Alert>
+        )}
+        {actionSuccess && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            {actionSuccess}
+          </Alert>
+        )}
+        <Button variant="outlined" color="warning" disabled={loading} onClick={() => void resetMfa()}>
+          Reset MFA enrollment
+        </Button>
       </Paper>
 
       <GroupMembershipPanel

@@ -48,6 +48,7 @@ OpenAPI.WITH_CREDENTIALS = true;
 export default function App() {
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("admin");
+  const [mfaCode, setMfaCode] = useState("");
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
   const [status, setStatus] = useState<ReconciliationStatusResponse | null>(null);
   const [zones, setZones] = useState<ZoneCatalogEntry[]>([]);
@@ -377,13 +378,14 @@ export default function App() {
     setAuthError(null);
     setLoading(true);
     try {
-      const request: LoginRequest = { username, password };
+      const request: LoginRequest = { username, password, mfaCode: mfaCode || undefined };
       const response = await AuthService.login(request);
       setLoggedInUser(response.username);
       setNewZoneOwner(defaultOwnerFolder(response.username));
-    } catch {
+      setMfaCode("");
+    } catch (error) {
       setLoggedInUser(null);
-      setAuthError("Invalid username or password");
+      setAuthError(formatApiError(error));
     } finally {
       setLoading(false);
     }
@@ -487,11 +489,7 @@ export default function App() {
       await ZonesService.updateZone(editingZone.ownerFolder, editingZone.zone, request);
       setEditZoneOpen(false);
       setEditingZone(null);
-      if (
-        selectedZone &&
-        selectedZone.owner === editingZone.ownerFolder &&
-        selectedZone.zoneName === editingZone.zone
-      ) {
+      if (selectedZone?.owner === editingZone.ownerFolder && selectedZone.zoneName === editingZone.zone) {
         setSelectedZone(null);
         setZoneView(null);
         setZoneViewError(null);
@@ -529,8 +527,7 @@ export default function App() {
       });
       setTransferZoneOpen(false);
       if (
-        selectedZone &&
-        selectedZone.owner === transferringZone.ownerFolder &&
+        selectedZone?.owner === transferringZone.ownerFolder &&
         selectedZone.zoneName === transferringZone.zone
       ) {
         setSelectedZone(null);
@@ -555,11 +552,7 @@ export default function App() {
     try {
       await ZonesService.deleteZone(deletingZone.ownerFolder, deletingZone.zone);
       setDeleteZoneOpen(false);
-      if (
-        selectedZone &&
-        selectedZone.owner === deletingZone.ownerFolder &&
-        selectedZone.zoneName === deletingZone.zone
-      ) {
+      if (selectedZone?.owner === deletingZone.ownerFolder && selectedZone.zoneName === deletingZone.zone) {
         setSelectedZone(null);
         setZoneView(null);
         setZoneViewError(null);
@@ -578,10 +571,12 @@ export default function App() {
       <LoginPanel
         username={username}
         password={password}
+        mfaCode={mfaCode}
         authError={authError}
         loading={loading}
         onUsernameChange={setUsername}
         onPasswordChange={setPassword}
+        onMfaCodeChange={setMfaCode}
         onLogin={() => void login()}
       />
     );

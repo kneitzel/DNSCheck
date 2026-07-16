@@ -4,7 +4,7 @@
 
 **Blocked by:** 23 — MFA enrollment and status; 24 — MFA login challenge
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Recovery codes restore access when the second factor is unavailable
-- [ ] Admin reset clears the active MFA enrollment and recovery material without deleting the operator account
+- [x] Recovery codes restore access when the second factor is unavailable
+- [x] Admin reset clears the active MFA enrollment and recovery material without deleting the operator account

@@ -8,11 +8,12 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.BadRequestException;
-import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 @ApplicationScoped
 @Transactional
@@ -20,10 +21,14 @@ public class OperatorMfaService {
 
     private static final int RECOVERY_CODE_COUNT = 8;
 
-    @Inject
-    OperatorRightsService operatorRightsService;
+    private final OperatorRightsService operatorRightsService;
+    private final MfaCodeService mfaCodeService;
 
-    private final MfaCodeService mfaCodeService = new MfaCodeService();
+    @Inject
+    public OperatorMfaService(OperatorRightsService operatorRightsService, MfaCodeService mfaCodeService) {
+        this.operatorRightsService = operatorRightsService;
+        this.mfaCodeService = mfaCodeService;
+    }
 
     public AccountSecurityResponse getCurrentSecurity() {
         return toResponse(operatorRightsService.requireCurrentOperator(), false, null);
@@ -56,13 +61,41 @@ public class OperatorMfaService {
             throw new BadRequestException("MFA enrollment is not pending");
         }
         if (!mfaCodeService.isValidTotpCode(operator.mfaPendingSecret, request.getCode())) {
-            throw new NotAuthorizedException("Invalid MFA code");
+            throw new WebApplicationException("Invalid MFA code", Response.Status.CONFLICT);
         }
 
         operator.mfaSecret = operator.mfaPendingSecret;
         operator.mfaPendingSecret = null;
         operator.mfaEnabled = true;
         return toResponse(operator, false, null);
+    }
+
+    public boolean consumeRecoveryCode(Operator operator, String candidate) {
+        if (operator == null || candidate == null || candidate.isBlank() || operator.mfaRecoveryCodeHashes == null) {
+            return false;
+        }
+
+        List<String> hashes = Arrays.stream(operator.mfaRecoveryCodeHashes.split("\\R"))
+            .map(hash -> hash.trim())
+                .filter(hash -> !hash.isBlank())
+                .toList();
+        for (String hash : hashes) {
+            if (mfaCodeService.matchesRecoveryCode(candidate, hash)) {
+                List<String> remainingHashes = hashes.stream()
+                        .filter(existingHash -> !Objects.equals(existingHash, hash))
+                        .toList();
+                operator.mfaRecoveryCodeHashes = remainingHashes.isEmpty() ? null : String.join("\n", remainingHashes);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void resetEnrollment(Operator operator) {
+        operator.mfaPendingSecret = null;
+        operator.mfaSecret = null;
+        operator.mfaEnabled = false;
+        operator.mfaRecoveryCodeHashes = null;
     }
 
     private AccountSecurityResponse toResponse(Operator operator, boolean includeRecoveryCodes, List<String> recoveryCodes) {
