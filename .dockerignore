@@ -1,0 +1,24 @@
+# Build output
+**/target/
+**/.quarkus/
+
+# Frontend
+**/node_modules/
+
+# IDE and VCS
+.git/
+.idea/
+.vscode/
+*.iml
+
+# Local data
+data/
+zones/
+keys/
+
+# Scratch and agent files
+.scratch/
+.agents/
+
+# Docs examples are copied at runtime, not needed in build context for speed
+# (keep them — operators may customize; small files)

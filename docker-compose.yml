@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: dnscheck
+      POSTGRES_USER: dnscheck
+      POSTGRES_PASSWORD: dnscheck
+    volumes:
+      - dnscheck-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dnscheck -d dnscheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  dnscheck:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      QUARKUS_PROFILE: prod
+      QUARKUS_DATASOURCE_DB_KIND: postgresql
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/dnscheck
+      QUARKUS_DATASOURCE_USERNAME: dnscheck
+      QUARKUS_DATASOURCE_PASSWORD: dnscheck
+      QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: update
+      DNSCHECK_DRY_RUN: "true"
+      DNSCHECK_ZONES_DIR: /data/zones
+      DNSCHECK_KEYS_DIR: /data/keys
+    volumes:
+      - ./zones:/data/zones
+      - ./keys:/data/keys
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  dnscheck-db:

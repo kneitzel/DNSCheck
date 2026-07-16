@@ -1,0 +1,2274 @@
+openapi: 3.1.0
+info:
+  title: DNSCheck API
+  version: 1.0.0
+  description: DNS zone reconciliation and management API
+servers:
+  - url: /
+    description: DNSCheck service
+tags:
+  - name: Auth
+    description: Operator authentication
+  - name: Reconciliation
+    description: Zone reconciliation and service health
+  - name: Zones
+    description: Zone catalog management and introspection
+  - name: ZoneView
+    description: Merged live and managed zone inspection
+  - name: Admin
+    description: Operator, group, and rights management
+  - name: Account
+    description: Current operator account settings and personal keys
+  - name: Keys
+    description: Selectable and missing TSIG key summaries for zone operations
+paths:
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Auth
+      operationId: login
+      summary: Authenticate with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Session established
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials
+  /api/v1/auth/logout:
+    post:
+      tags:
+        - Auth
+      operationId: logout
+      summary: End the current session
+      responses:
+        "204":
+          description: Session cleared
+  /api/v1/auth/change-password:
+    post:
+      tags:
+        - Auth
+      operationId: changePassword
+      summary: Change password for the current operator
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "204":
+          description: Password updated
+        "401":
+          description: Not authenticated or current password incorrect
+  /api/v1/auth/me/rights:
+    get:
+      tags:
+        - Auth
+      operationId: getMyRights
+      summary: Effective rights for the current operator
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Rights summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RightsSummaryResponse"
+        "401":
+          description: Not authenticated
+  /api/v1/account/keys:
+    get:
+      tags:
+        - Account
+      operationId: listAccountKeys
+      summary: List personal TSIG key files for the current operator
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Personal key list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountKeyListResponse"
+        "401":
+          description: Not authenticated
+    post:
+      tags:
+        - Account
+      operationId: uploadAccountKey
+      x-use-rest-response: true
+      summary: Upload a new personal TSIG key file
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadAccountKeyRequest"
+      responses:
+        "201":
+          description: Key created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountKeySummary"
+        "400":
+          description: Invalid key content or filename
+        "401":
+          description: Not authenticated
+        "409":
+          description: Key filename already exists
+  /api/v1/account/keys/{keyName}:
+    get:
+      tags:
+        - Account
+      operationId: getAccountKey
+      summary: Read a personal TSIG key file
+      security:
+        - session: []
+      parameters:
+        - name: keyName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Key content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountKeyDetail"
+        "401":
+          description: Not authenticated
+        "404":
+          description: Key not found
+    put:
+      tags:
+        - Account
+      operationId: updateAccountKey
+      summary: Update personal TSIG key content
+      security:
+        - session: []
+      parameters:
+        - name: keyName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAccountKeyRequest"
+      responses:
+        "200":
+          description: Key updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountKeySummary"
+        "400":
+          description: Invalid key content
+        "401":
+          description: Not authenticated
+        "404":
+          description: Key not found
+    delete:
+      tags:
+        - Account
+      operationId: deleteAccountKey
+      summary: Delete a personal TSIG key file
+      security:
+        - session: []
+      parameters:
+        - name: keyName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Key deleted
+        "401":
+          description: Not authenticated
+        "404":
+          description: Key not found
+        "409":
+          description: Key is referenced by one or more zone catalog entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KeyInUseError"
+  /api/v1/account/keys/{keyName}/replace:
+    post:
+      tags:
+        - Account
+      operationId: replaceAccountKey
+      summary: Replace personal TSIG key content from uploaded file text
+      security:
+        - session: []
+      parameters:
+        - name: keyName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplaceAccountKeyRequest"
+      responses:
+        "200":
+          description: Key replaced
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountKeySummary"
+        "400":
+          description: Invalid key content
+        "401":
+          description: Not authenticated
+        "404":
+          description: Key not found
+  /api/v1/account/keys/{keyName}/download:
+    get:
+      tags:
+        - Account
+      operationId: downloadAccountKey
+      summary: Download a personal TSIG key file
+      security:
+        - session: []
+      parameters:
+        - name: keyName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Key file bytes
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          description: Not authenticated
+        "404":
+          description: Key not found
+  /api/v1/keys/selectable:
+    get:
+      tags:
+        - Keys
+      operationId: listSelectableKeys
+      summary: List TSIG keys the current operator may attach to a zone
+      description: >
+        Own keys are labeled by filename. Group keys for member groups are labeled
+        as groupname/filename. Group key entries do not include download URLs.
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Selectable keys for the zone key picker
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelectableKeysResponse"
+        "401":
+          description: Not authenticated
+  /api/v1/keys/missing:
+    get:
+      tags:
+        - Keys
+      operationId: listMissingKeys
+      summary: Summarize missing key files referenced by readable zone catalog entries
+      description: >
+        Non-admin operators see missing keys only for zones they can read.
+        Admins see all missing key references in the catalog.
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Missing key summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissingKeysResponse"
+        "401":
+          description: Not authenticated
+  /api/v1/health:
+    get:
+      tags:
+        - Reconciliation
+      operationId: getHealth
+      summary: Service health check
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /api/v1/status:
+    get:
+      tags:
+        - Reconciliation
+      operationId: getReconciliationStatus
+      summary: Last reconciliation run status
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Status of the most recent reconciliation run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconciliationStatusResponse"
+        "401":
+          description: Not authenticated
+  /api/v1/reconcile:
+    post:
+      tags:
+        - Reconciliation
+      operationId: triggerReconciliation
+      summary: Trigger reconciliation for all zones
+      security:
+        - session: []
+      parameters:
+        - name: dryRun
+          in: query
+          required: false
+          description: >
+            When omitted, uses the service configuration value `dnscheck.dry-run`.
+            When present, overrides the configured default for this run.
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Reconciliation run completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconciliationStatusResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks global admin access
+  /api/v1/zones:
+    get:
+      tags:
+        - Zones
+      operationId: listZones
+      summary: List zone definitions visible to the current operator
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Zone catalog entries with validation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneCatalogResponse"
+        "401":
+          description: Not authenticated
+    post:
+      tags:
+        - Zones
+      operationId: createZone
+      x-use-rest-response: true
+      summary: Create a new zone definition in the catalog
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateZoneRequest"
+      responses:
+        "201":
+          description: Zone definition created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneCatalogEntry"
+        "400":
+          description: Invalid zone definition request
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks zone-create access
+        "409":
+          description: Zone definition already exists
+  /api/v1/zones/{owner}/{zoneName}:
+    patch:
+      tags:
+        - Zones
+      operationId: updateZone
+      summary: Update nameserver and/or key file for a zone definition
+      security:
+        - session: []
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Owner folder (e.g. admin.u or dns-team.g)
+        - name: zoneName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateZoneRequest"
+      responses:
+        "200":
+          description: Updated zone catalog entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneCatalogEntry"
+        "400":
+          description: Invalid update request
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks zone-create access
+        "404":
+          description: Zone definition not found
+    delete:
+      tags:
+        - Zones
+      operationId: deleteZone
+      summary: Remove a zone definition from the catalog
+      security:
+        - session: []
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Owner folder (e.g. admin.u or dns-team.g)
+        - name: zoneName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Zone definition removed
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks zone-create access
+        "404":
+          description: Zone definition not found
+  /api/v1/zones/{owner}/{zoneName}/transfer:
+    post:
+      tags:
+        - Zones
+      operationId: transferZone
+      summary: Transfer a zone definition to another owner folder
+      security:
+        - session: []
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Current owner folder (e.g. admin.u or dns-team.g)
+        - name: zoneName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferZoneRequest"
+      responses:
+        "200":
+          description: Zone catalog entry after transfer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneCatalogEntry"
+        "400":
+          description: Invalid transfer request
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks transfer access for this zone
+        "404":
+          description: Zone definition not found
+        "409":
+          description: Target catalog entry already exists
+  /api/v1/zones/{owner}/{zoneName}/records:
+    post:
+      tags:
+        - Zones
+      operationId: createZoneRecord
+      summary: Create a DNS record with optional enforcement
+      security:
+        - session: []
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Owner folder (e.g. admin.u or dns-team.g)
+        - name: zoneName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRecordRequest"
+      responses:
+        "200":
+          description: Updated zone view after record creation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneViewResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks write access to this zone
+        "404":
+          description: Zone or record not found
+    delete:
+      tags:
+        - Zones
+      operationId: deleteZoneRecord
+      summary: Delete a record from live DNS and the zone definition if present
+      security:
+        - session: []
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Owner folder (e.g. admin.u or dns-team.g)
+        - name: zoneName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordRef"
+      responses:
+        "200":
+          description: Updated zone view after deletion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneViewResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks write access to this zone
+        "404":
+          description: Zone or record not found
+    patch:
+      tags:
+        - Zones
+      operationId: modifyZoneRecord
+      summary: Modify a managed or ad-hoc live record (rdata and/or TTL)
+      description: >
+        When the record exists in the zone definition, updates the managed record
+        in JSON and applies matching live DNS changes. When the record is ad-hoc
+        (live only), updates live DNS only and does not write the zone definition.
+        Name and type are immutable; supply newRdata and/or newTtl. For ad-hoc
+        records, omitting newTtl leaves the live TTL unchanged.
+      security:
+        - session: []
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Owner folder (e.g. admin.u or dns-team.g)
+        - name: zoneName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModifyRecordRequest"
+      responses:
+        "200":
+          description: Updated zone view after modification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneViewResponse"
+        "400":
+          description: Invalid modification request
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks write access to this zone
+        "404":
+          description: Zone or record not found
+  /api/v1/zones/{owner}/{zoneName}/records/promote:
+    post:
+      tags:
+        - Zones
+      operationId: promoteZoneRecord
+      summary: Promote an ad-hoc live record into the zone definition
+      security:
+        - session: []
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Owner folder (e.g. admin.u or dns-team.g)
+        - name: zoneName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromoteRecordRequest"
+      responses:
+        "200":
+          description: Updated zone view after promotion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneViewResponse"
+        "400":
+          description: Record is not eligible for promotion
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks write access to this zone
+        "404":
+          description: Zone or record not found
+  /api/v1/zones/{owner}/{zoneName}/records/demote:
+    post:
+      tags:
+        - Zones
+      operationId: demoteZoneRecord
+      summary: Demote an enforced record out of the zone definition
+      security:
+        - session: []
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Owner folder (e.g. admin.u or dns-team.g)
+        - name: zoneName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordRef"
+      responses:
+        "200":
+          description: Updated zone view after demotion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneViewResponse"
+        "400":
+          description: Record is not eligible for demotion
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks write access to this zone
+        "404":
+          description: Zone or record not found
+  /api/v1/zones/{owner}/{zoneName}/reconcile:
+    post:
+      tags:
+        - Zones
+      operationId: triggerZoneReconciliation
+      summary: Trigger reconciliation for a single zone
+      security:
+        - session: []
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Owner folder (e.g. admin.u or dns-team.g)
+        - name: zoneName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: dryRun
+          in: query
+          required: false
+          description: >
+            When omitted, uses the service configuration value `dnscheck.dry-run`.
+            When present, overrides the configured default for this run.
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Reconciliation run completed for the zone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconciliationStatusResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks write access to this zone
+        "404":
+          description: Zone definition not found
+        "409":
+          description: Referenced key file is missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissingKeyError"
+  /api/v1/zones/{owner}/{zoneName}/deletion-markers:
+    post:
+      tags:
+        - Zones
+      operationId: createDeletionMarker
+      summary: Add a deletion marker to the zone definition
+      security:
+        - session: []
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Owner folder (e.g. admin.u or dns-team.g)
+        - name: zoneName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeletionMarkerRequest"
+      responses:
+        "200":
+          description: Updated zone view after adding deletion marker
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneViewResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks write access to this zone
+        "404":
+          description: Zone definition not found
+        "409":
+          description: Deletion marker already exists
+    delete:
+      tags:
+        - Zones
+      operationId: deleteDeletionMarker
+      summary: Remove a deletion marker from the zone definition
+      security:
+        - session: []
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Owner folder (e.g. admin.u or dns-team.g)
+        - name: zoneName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeletionMarkerRequest"
+      responses:
+        "200":
+          description: Updated zone view after removing deletion marker
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneViewResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks write access to this zone
+        "404":
+          description: Zone or deletion marker not found
+  /api/v1/zones/{owner}/{zoneName}/view:
+    get:
+      tags:
+        - ZoneView
+      operationId: getZoneView
+      summary: Read-only merged view of a zone
+      security:
+        - session: []
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Owner folder (e.g. admin.u or dns-team.g)
+        - name: zoneName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Live zone merged with zone definition and per-record status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneViewResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks read access to this zone
+        "404":
+          description: Zone definition not found
+        "409":
+          description: Referenced key file is missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissingKeyError"
+        "502":
+          description: Live zone could not be loaded (for example AXFR failed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /api/v1/admin/operators:
+    get:
+      tags:
+        - Admin
+      operationId: listOperators
+      summary: List all operators
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Operators in the system
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorListResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+    post:
+      tags:
+        - Admin
+      operationId: createOperator
+      summary: Create a new operator account
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOperatorRequest"
+      responses:
+        "200":
+          description: Operator created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorSummary"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "409":
+          description: Username already exists
+  /api/v1/admin/operators/{operatorId}:
+    get:
+      tags:
+        - Admin
+      operationId: getOperator
+      summary: Get one operator
+      security:
+        - session: []
+      parameters:
+        - name: operatorId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Operator details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorSummary"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Operator not found
+    patch:
+      tags:
+        - Admin
+      operationId: updateOperator
+      summary: Update operator enabled state or password
+      security:
+        - session: []
+      parameters:
+        - name: operatorId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOperatorRequest"
+      responses:
+        "200":
+          description: Operator updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorSummary"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Operator not found
+  /api/v1/admin/operators/{operatorId}/rights:
+    get:
+      tags:
+        - Admin
+      operationId: getOperatorRights
+      summary: Effective rights for an operator
+      security:
+        - session: []
+      parameters:
+        - name: operatorId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Rights summary with direct and inherited sources
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RightsSummaryResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Operator not found
+  /api/v1/admin/groups:
+    get:
+      tags:
+        - Admin
+      operationId: listGroups
+      summary: List all operator groups
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Groups in the system
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupListResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+    post:
+      tags:
+        - Admin
+      operationId: createGroup
+      summary: Create a new operator group
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGroupRequest"
+      responses:
+        "200":
+          description: Group created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupSummary"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "409":
+          description: Group name already exists
+  /api/v1/admin/groups/{groupId}:
+    get:
+      tags:
+        - Admin
+      operationId: getGroup
+      summary: Get one operator group
+      security:
+        - session: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Group details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupSummary"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks access to this group
+        "404":
+          description: Group not found
+    delete:
+      tags:
+        - Admin
+      operationId: deleteGroup
+      summary: Delete an operator group
+      security:
+        - session: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "204":
+          description: Group deleted
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Group not found
+  /api/v1/admin/groups/{groupId}/rights:
+    get:
+      tags:
+        - Admin
+      operationId: getGroupRights
+      summary: Rights granted directly to a group
+      security:
+        - session: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Rights summary for the group
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RightsSummaryResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Group not found
+  /api/v1/admin/groups/{groupId}/keys:
+    get:
+      tags:
+        - Admin
+      operationId: listGroupKeys
+      summary: List TSIG key files for a group
+      security:
+        - session: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Group key list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountKeyListResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator is not a group member or admin
+        "404":
+          description: Group not found
+    post:
+      tags:
+        - Admin
+      operationId: uploadGroupKey
+      x-use-rest-response: true
+      summary: Upload a group TSIG key file
+      security:
+        - session: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadAccountKeyRequest"
+      responses:
+        "201":
+          description: Key created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountKeySummary"
+        "400":
+          description: Invalid key content or filename
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Group not found
+        "409":
+          description: Key filename already exists
+  /api/v1/admin/groups/{groupId}/keys/{keyName}:
+    get:
+      tags:
+        - Admin
+      operationId: getGroupKey
+      summary: Read a group TSIG key file
+      security:
+        - session: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: keyName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Key content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountKeyDetail"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Key or group not found
+    put:
+      tags:
+        - Admin
+      operationId: updateGroupKey
+      summary: Update group TSIG key content
+      security:
+        - session: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: keyName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAccountKeyRequest"
+      responses:
+        "200":
+          description: Key updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountKeySummary"
+        "400":
+          description: Invalid key content
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Key or group not found
+    delete:
+      tags:
+        - Admin
+      operationId: deleteGroupKey
+      summary: Delete a group TSIG key file
+      security:
+        - session: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: keyName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Key deleted
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Key or group not found
+        "409":
+          description: Key is referenced by one or more zone catalog entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KeyInUseError"
+  /api/v1/admin/groups/{groupId}/keys/{keyName}/replace:
+    post:
+      tags:
+        - Admin
+      operationId: replaceGroupKey
+      summary: Replace group TSIG key content from uploaded file text
+      security:
+        - session: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: keyName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplaceAccountKeyRequest"
+      responses:
+        "200":
+          description: Key replaced
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountKeySummary"
+        "400":
+          description: Invalid key content
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Key or group not found
+  /api/v1/admin/groups/{groupId}/keys/{keyName}/download:
+    get:
+      tags:
+        - Admin
+      operationId: downloadGroupKey
+      summary: Download a group TSIG key file
+      security:
+        - session: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: keyName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Key file bytes
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Key or group not found
+  /api/v1/admin/groups/{groupId}/members/{operatorId}:
+    put:
+      tags:
+        - Admin
+      operationId: addGroupMember
+      summary: Add an operator to a group
+      security:
+        - session: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: operatorId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Group membership updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupSummary"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Group or operator not found
+    delete:
+      tags:
+        - Admin
+      operationId: removeGroupMember
+      summary: Remove an operator from a group
+      security:
+        - session: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: operatorId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Group membership updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupSummary"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Group or operator not found
+  /api/v1/admin/global-grants:
+    get:
+      tags:
+        - Admin
+      operationId: listGlobalGrants
+      summary: List all global rights grants
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Global grants in the system
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GlobalGrantListResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+    post:
+      tags:
+        - Admin
+      operationId: createGlobalGrant
+      summary: Grant a global right to an operator or group
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGlobalGrantRequest"
+      responses:
+        "200":
+          description: Global grant created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GlobalGrantSummary"
+        "400":
+          description: Invalid grant request
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Operator or group not found
+        "409":
+          description: Grant already exists
+  /api/v1/admin/global-grants/{grantId}:
+    delete:
+      tags:
+        - Admin
+      operationId: deleteGlobalGrant
+      summary: Revoke a global right grant
+      security:
+        - session: []
+      parameters:
+        - name: grantId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "204":
+          description: Global grant revoked
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Grant not found
+  /api/v1/admin/zone-grants:
+    get:
+      tags:
+        - Admin
+      operationId: listZoneGrants
+      summary: List all per-zone rights grants
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Zone grants in the system
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneGrantListResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+    post:
+      tags:
+        - Admin
+      operationId: createZoneGrant
+      summary: Grant a per-zone right to an operator or group
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateZoneGrantRequest"
+      responses:
+        "200":
+          description: Zone grant created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneGrantSummary"
+        "400":
+          description: Invalid grant request
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Operator or group not found
+        "409":
+          description: Grant already exists
+  /api/v1/admin/zone-grants/{grantId}:
+    delete:
+      tags:
+        - Admin
+      operationId: deleteZoneGrant
+      summary: Revoke a per-zone right grant
+      security:
+        - session: []
+      parameters:
+        - name: grantId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "204":
+          description: Zone grant revoked
+        "401":
+          description: Not authenticated
+        "403":
+          description: Operator lacks admin access
+        "404":
+          description: Grant not found
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: DNSCHECK_SESSION
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+    ChangePasswordRequest:
+      type: object
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          format: password
+    RightSourceType:
+      type: string
+      enum:
+        - direct
+        - group
+    RightSource:
+      type: object
+      required:
+        - type
+        - editable
+      properties:
+        type:
+          $ref: "#/components/schemas/RightSourceType"
+        groupName:
+          type: string
+        grantId:
+          type: integer
+          format: int64
+        editable:
+          type: boolean
+    GlobalRightEntry:
+      type: object
+      required:
+        - kind
+        - granted
+        - sources
+      properties:
+        kind:
+          $ref: "#/components/schemas/AdminGlobalRight"
+        granted:
+          type: boolean
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/RightSource"
+    ZoneRightEntry:
+      type: object
+      required:
+        - ownerFolder
+        - zoneName
+        - kind
+        - sources
+      properties:
+        ownerFolder:
+          type: string
+          description: Owner folder for the catalog entry (e.g. admin.u)
+        zoneName:
+          type: string
+        kind:
+          $ref: "#/components/schemas/AdminZoneRight"
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/RightSource"
+    RightsSummaryResponse:
+      type: object
+      required:
+        - globalRights
+        - zoneRights
+      properties:
+        globalRights:
+          type: array
+          items:
+            $ref: "#/components/schemas/GlobalRightEntry"
+        zoneRights:
+          type: array
+          items:
+            $ref: "#/components/schemas/ZoneRightEntry"
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - UP
+    ReconciliationStatusResponse:
+      type: object
+      required:
+        - status
+        - dryRun
+        - zonesDir
+        - zoneOutcomes
+      properties:
+        status:
+          type: string
+          enum:
+            - never_run
+            - completed
+            - failed
+        startedAt:
+          type: string
+          format: date-time
+        dryRun:
+          type: boolean
+        zonesDir:
+          type: string
+        zoneOutcomes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ZoneOutcome"
+    ZoneOutcome:
+      type: object
+      required:
+        - zone
+        - outcome
+        - plannedChanges
+      properties:
+        zone:
+          type: string
+        outcome:
+          type: string
+          enum:
+            - SUCCESS
+            - RECONCILED
+            - DRIFT_DETECTED
+            - FAILED
+        plannedChanges:
+          type: array
+          items:
+            type: string
+        error:
+          type: string
+    ZoneCatalogResponse:
+      type: object
+      required:
+        - zonesDir
+        - entries
+      properties:
+        zonesDir:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ZoneCatalogEntry"
+    CreateZoneRequest:
+      type: object
+      required:
+        - owner
+        - zone
+        - nameserver
+        - keyFile
+      properties:
+        owner:
+          type: string
+          description: Target owner folder (e.g. admin.u or dns-team.g)
+        zone:
+          type: string
+        nameserver:
+          type: string
+        keyFile:
+          type: string
+    UpdateZoneRequest:
+      type: object
+      properties:
+        nameserver:
+          type: string
+        keyFile:
+          type: string
+    TransferZoneRequest:
+      type: object
+      required:
+        - targetOwner
+      properties:
+        targetOwner:
+          type: string
+          description: Destination owner folder (e.g. dns-team.g)
+    CreateRecordRequest:
+      type: object
+      required:
+        - name
+        - type
+        - rdata
+        - enforce
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        rdata:
+          type: string
+        ttl:
+          type: integer
+          format: int32
+        enforce:
+          type: boolean
+    RecordRef:
+      type: object
+      required:
+        - name
+        - type
+        - rdata
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        rdata:
+          type: string
+    DeletionMarkerRequest:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        rdataPattern:
+          type: string
+          description: Optional glob pattern; omitted or empty matches all rdata at the name
+    PromoteRecordRequest:
+      allOf:
+        - $ref: "#/components/schemas/RecordRef"
+        - type: object
+          properties:
+            ttl:
+              type: integer
+              format: int32
+    ModifyRecordRequest:
+      type: object
+      required:
+        - name
+        - type
+        - rdata
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        rdata:
+          type: string
+        newRdata:
+          type: string
+        newTtl:
+          type: integer
+          format: int32
+    ZoneCatalogEntry:
+      type: object
+      required:
+        - ownerFolder
+        - zone
+        - filename
+        - valid
+      properties:
+        ownerFolder:
+          type: string
+        zone:
+          type: string
+        filename:
+          type: string
+        valid:
+          type: boolean
+        error:
+          type: string
+        nameserver:
+          type: string
+    ZoneViewResponse:
+      type: object
+      required:
+        - zone
+        - defaultTtl
+        - records
+      properties:
+        zone:
+          type: string
+        defaultTtl:
+          type: integer
+          format: int64
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/ZoneViewRecord"
+    ZoneViewRecord:
+      type: object
+      required:
+        - name
+        - type
+        - status
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        status:
+          $ref: "#/components/schemas/ZoneViewRecordStatus"
+        rdata:
+          type: string
+        ttl:
+          type: integer
+          format: int64
+        expectedRdata:
+          type: string
+        expectedTtl:
+          type: integer
+          format: int64
+    ZoneViewRecordStatus:
+      type: string
+      enum:
+        - enforced
+        - ad_hoc
+        - drifted
+        - missing
+        - marked_for_deletion
+    OperatorSummary:
+      type: object
+      required:
+        - id
+        - username
+        - enabled
+        - groupNames
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        enabled:
+          type: boolean
+        groupNames:
+          type: array
+          items:
+            type: string
+    OperatorListResponse:
+      type: object
+      required:
+        - operators
+      properties:
+        operators:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperatorSummary"
+    CreateOperatorRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+    UpdateOperatorRequest:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        password:
+          type: string
+          format: password
+    GroupSummary:
+      type: object
+      required:
+        - id
+        - name
+        - memberUsernames
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        memberUsernames:
+          type: array
+          items:
+            type: string
+    GroupListResponse:
+      type: object
+      required:
+        - groups
+      properties:
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroupSummary"
+    CreateGroupRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+    AdminGlobalRight:
+      type: string
+      enum:
+        - admin
+        - zone_create
+    AdminZoneRight:
+      type: string
+      enum:
+        - read
+        - write
+    GlobalGrantSummary:
+      type: object
+      required:
+        - id
+        - kind
+      properties:
+        id:
+          type: integer
+          format: int64
+        kind:
+          $ref: "#/components/schemas/AdminGlobalRight"
+        operatorUsername:
+          type: string
+        groupName:
+          type: string
+    GlobalGrantListResponse:
+      type: object
+      required:
+        - grants
+      properties:
+        grants:
+          type: array
+          items:
+            $ref: "#/components/schemas/GlobalGrantSummary"
+    CreateGlobalGrantRequest:
+      type: object
+      required:
+        - kind
+      properties:
+        kind:
+          $ref: "#/components/schemas/AdminGlobalRight"
+        operatorId:
+          type: integer
+          format: int64
+        groupId:
+          type: integer
+          format: int64
+    ZoneGrantSummary:
+      type: object
+      required:
+        - id
+        - ownerFolder
+        - zoneName
+        - kind
+      properties:
+        id:
+          type: integer
+          format: int64
+        ownerFolder:
+          type: string
+          description: Owner folder for the catalog entry (e.g. admin.u)
+        zoneName:
+          type: string
+        kind:
+          $ref: "#/components/schemas/AdminZoneRight"
+        operatorUsername:
+          type: string
+        groupName:
+          type: string
+    ZoneGrantListResponse:
+      type: object
+      required:
+        - grants
+      properties:
+        grants:
+          type: array
+          items:
+            $ref: "#/components/schemas/ZoneGrantSummary"
+    CreateZoneGrantRequest:
+      type: object
+      required:
+        - ownerFolder
+        - zoneName
+        - kind
+      properties:
+        ownerFolder:
+          type: string
+          description: Owner folder for the catalog entry (e.g. admin.u)
+        zoneName:
+          type: string
+        kind:
+          $ref: "#/components/schemas/AdminZoneRight"
+        operatorId:
+          type: integer
+          format: int64
+        groupId:
+          type: integer
+          format: int64
+    AccountKeySummary:
+      type: object
+      required:
+        - keyName
+        - scopedPath
+      properties:
+        keyName:
+          type: string
+        scopedPath:
+          type: string
+          description: Path relative to the keys directory, e.g. admin.u/example.com.key
+    AccountKeyListResponse:
+      type: object
+      required:
+        - keys
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccountKeySummary"
+    AccountKeyDetail:
+      allOf:
+        - $ref: "#/components/schemas/AccountKeySummary"
+        - type: object
+          required:
+            - content
+          properties:
+            content:
+              type: string
+              description: BIND native key file content
+    UploadAccountKeyRequest:
+      type: object
+      required:
+        - keyName
+        - content
+      properties:
+        keyName:
+          type: string
+          description: Basename ending in .key
+        content:
+          type: string
+          description: BIND native key file content
+    UpdateAccountKeyRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+    ReplaceAccountKeyRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+    SelectableKey:
+      type: object
+      required:
+        - scopedPath
+        - displayLabel
+      properties:
+        scopedPath:
+          type: string
+          description: Path relative to the keys directory, e.g. admin.u/example.com.key
+        displayLabel:
+          type: string
+          description: >
+            Own keys use the basename; group keys use groupname/filename
+            (without the .g suffix on the group name).
+    SelectableKeysResponse:
+      type: object
+      required:
+        - keys
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: "#/components/schemas/SelectableKey"
+    MissingKeyEntry:
+      type: object
+      required:
+        - scopedKeyPath
+        - affectedEntryCount
+      properties:
+        scopedKeyPath:
+          type: string
+        affectedEntryCount:
+          type: integer
+          format: int32
+          minimum: 1
+    MissingKeysResponse:
+      type: object
+      required:
+        - missing
+      properties:
+        missing:
+          type: array
+          items:
+            $ref: "#/components/schemas/MissingKeyEntry"
+    KeyInUseError:
+      type: object
+      required:
+        - message
+        - referencedByCount
+      properties:
+        message:
+          type: string
+        referencedByCount:
+          type: integer
+          format: int32
+          minimum: 1
+    MissingKeyError:
+      type: object
+      required:
+        - message
+        - scopedKeyPath
+      properties:
+        message:
+          type: string
+        scopedKeyPath:
+          type: string
+    ErrorMessage:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string

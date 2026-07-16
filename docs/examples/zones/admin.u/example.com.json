@@ -1,0 +1,12 @@
+{
+  "zone": "example.com",
+  "nameserver": "ns1.example.com",
+  "keyFile": "admin.u/example.com.key",
+  "records": [
+    {
+      "name": "mail",
+      "type": "A",
+      "rdata": "192.0.2.10"
+    }
+  ]
+}

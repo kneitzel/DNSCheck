@@ -1,0 +1,28 @@
+{
+  "name": "dnscheck-ui",
+  "private": true,
+  "version": "0.1.0-SNAPSHOT",
+  "type": "module",
+  "scripts": {
+    "generate-api": "openapi --input ../resources/openapi.yml --output ./src/generated --client fetch",
+    "dev": "npm run generate-api && vite",
+    "build": "npm run generate-api && tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^6.4.8",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.4.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "openapi-typescript-codegen": "^0.29.0",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.2"
+  }
+}

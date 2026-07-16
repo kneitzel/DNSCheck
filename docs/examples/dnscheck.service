@@ -1,0 +1,17 @@
+[Unit]
+Description=DNSCheck reconciliation service
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dnscheck
+Group=dnscheck
+WorkingDirectory=/opt/dnscheck
+EnvironmentFile=/etc/dnscheck/dnscheck.env
+ExecStart=/usr/bin/java -jar /opt/dnscheck/service/quarkus-run.jar
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
