@@ -15,6 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
+import { QRCodeSVG } from "qrcode.react";
 import { AccountService, AuthService, type AccountSecurityResponse } from "../generated";
 import { RightsSummaryPanel } from "../components/RightsSummaryPanel";
 
@@ -77,7 +78,7 @@ export function AccountPage() {
       setSecurity(response);
       setMfaRecoveryCodes(response.recoveryCodes ?? []);
       setMfaCode("");
-      setMfaMessage("MFA enrollment started. Add the setup key to your authenticator app, then confirm the code.");
+      setMfaMessage("MFA enrollment started. Scan the QR code or enter the setup key, then confirm the code.");
     } catch {
       setError("Could not start MFA enrollment.");
     } finally {
@@ -144,14 +145,35 @@ export function AccountPage() {
           <Chip label={statusLabel} color={security?.mfaStatus === "active" ? "success" : "default"} />
         </Stack>
         {security?.mfaStatus === "pending" && security.setupKey && (
-          <>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              Add this setup key to your authenticator app:
-            </Typography>
-            <Paper variant="outlined" sx={{ p: 2, mb: 2, fontFamily: "monospace", overflowX: "auto" }}>
-              {security.otpauthUri ?? security.setupKey}
-            </Paper>
-          </>
+          <Stack spacing={2} sx={{ mb: 2 }}>
+            {security.otpauthUri && (
+              <Box>
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  Scan this QR code with your authenticator app:
+                </Typography>
+                <Box
+                  sx={{
+                    display: "inline-flex",
+                    p: 1.5,
+                    bgcolor: "common.white",
+                    border: 1,
+                    borderColor: "divider",
+                  }}
+                  aria-label="MFA enrollment QR code"
+                >
+                  <QRCodeSVG value={security.otpauthUri} size={180} marginSize={1} />
+                </Box>
+              </Box>
+            )}
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Or enter this setup key manually:
+              </Typography>
+              <Paper variant="outlined" sx={{ p: 2, fontFamily: "monospace", overflowX: "auto" }}>
+                {security.setupKey}
+              </Paper>
+            </Box>
+          </Stack>
         )}
         {mfaRecoveryCodes.length > 0 && (
           <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>

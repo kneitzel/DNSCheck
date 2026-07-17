@@ -4,9 +4,9 @@
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Pending MFA enrollment UI shows a client-rendered QR from the otpauth URI
-- [ ] Pending UI shows the manual setup key for typing into an authenticator app
-- [ ] Pending UI does not show the raw otpauth URI string
-- [ ] Confirm enrollment and MFA status behavior remain unchanged
+- [x] Pending MFA enrollment UI shows a client-rendered QR from the otpauth URI
+- [x] Pending UI shows the manual setup key for typing into an authenticator app
+- [x] Pending UI does not show the raw otpauth URI string
+- [x] Confirm enrollment and MFA status behavior remain unchanged
