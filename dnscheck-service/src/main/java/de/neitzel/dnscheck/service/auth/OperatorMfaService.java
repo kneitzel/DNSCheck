@@ -70,6 +70,15 @@ public class OperatorMfaService {
         return toResponse(operator, false, null);
     }
 
+    public AccountSecurityResponse cancelEnrollment() {
+        Operator operator = operatorRightsService.requireCurrentOperator();
+        if (operator.mfaPendingSecret == null) {
+            throw new WebApplicationException("MFA enrollment is not pending", Response.Status.CONFLICT);
+        }
+        resetEnrollment(operator);
+        return toResponse(operator, false, null);
+    }
+
     public boolean consumeRecoveryCode(Operator operator, String candidate) {
         if (operator == null || candidate == null || candidate.isBlank() || operator.mfaRecoveryCodeHashes == null) {
             return false;

@@ -22,6 +22,10 @@ _Avoid_: Backup code, emergency code
 An admin action that clears an operator's MFA enrollment so the operator can sign in with password only and re-enroll.
 _Avoid_: Disable MFA, force reset
 
+**Cancel MFA enrollment**:
+An operator action that abandons a *pending* MFA enrollment, clearing the pending second factor and any recovery codes issued during that enrollment, returning MFA status to disabled.
+_Avoid_: Abort setup, undo MFA, discard enrollment
+
 **DNSCheck**:
 The reconciliation tool itself — checks live DNS against expected records and repairs mismatches. Delivered as a core library, a Quarkus service with UI, and a CLI for direct operator use.
 _Avoid_: Monitor, sync agent, DNS bot

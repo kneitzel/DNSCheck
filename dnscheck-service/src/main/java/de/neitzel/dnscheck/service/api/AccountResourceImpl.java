@@ -46,6 +46,11 @@ public class AccountResourceImpl implements AccountResource {
     }
 
     @Override
+    public AccountSecurityResponse cancelAccountMfaEnrollment() {
+        return operatorMfaService.cancelEnrollment();
+    }
+
+    @Override
     public AccountKeyListResponse listAccountKeys() {
         Operator operator = operatorRightsService.requireCurrentOperator();
         AccountKeyListResponse response = new AccountKeyListResponse();

@@ -127,6 +127,25 @@ paths:
           description: Not authenticated
         "409":
           description: MFA is already pending or active
+  /api/v1/account/security/mfa:
+    delete:
+      tags:
+        - Account
+      operationId: cancelAccountMfaEnrollment
+      summary: Cancel pending MFA enrollment for the current operator
+      security:
+        - session: []
+      responses:
+        "200":
+          description: Pending MFA enrollment cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountSecurityResponse"
+        "401":
+          description: Not authenticated
+        "409":
+          description: MFA enrollment is not pending
   /api/v1/account/security/mfa/confirm:
     post:
       tags:

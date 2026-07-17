@@ -34,6 +34,8 @@ Add optional multi-factor authentication for operator sign-in. An operator can e
 20. As an operator, I want the service to reject protected API requests when I have no valid session, so that MFA does not weaken existing session enforcement.
 21. As an operator, I want the login flow to remain understandable in the UI, so that I can tell when I need a password, a second factor, or a recovery code.
 22. As an operator, I want MFA changes to survive service restarts, so that sign-in security is durable and not held only in memory.
+23. As an operator, I want to cancel a pending MFA enrollment, so that I can abandon setup and return to password-only sign-in without involving an admin.
+24. As an operator, I want a QR code and manual setup key during pending MFA enrollment, so that I can add the second factor in an authenticator app without copying a raw otpauth URI.
 
 ## Implementation Decisions
 

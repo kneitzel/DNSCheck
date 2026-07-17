@@ -1,5 +1,19 @@
 import { useEffect, useState } from "react";
-import { Alert, Box, Button, Chip, Paper, Stack, TextField, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { AccountService, AuthService, type AccountSecurityResponse } from "../generated";
 import { RightsSummaryPanel } from "../components/RightsSummaryPanel";
@@ -14,6 +28,7 @@ export function AccountPage() {
   const [mfaMessage, setMfaMessage] = useState<string | null>(null);
   const [mfaRecoveryCodes, setMfaRecoveryCodes] = useState<string[]>([]);
   const [security, setSecurity] = useState<AccountSecurityResponse | null>(null);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [rights, setRights] = useState<Awaited<ReturnType<typeof AuthService.getMyRights>> | null>(
     null,
   );
@@ -83,6 +98,25 @@ export function AccountPage() {
       setMfaMessage("MFA enrollment confirmed.");
     } catch {
       setError("Could not confirm MFA enrollment. Check the verification code.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancelMfaEnrollment = async () => {
+    setError(null);
+    setSuccess(null);
+    setMfaMessage(null);
+    setLoading(true);
+    try {
+      const response = await AccountService.cancelAccountMfaEnrollment();
+      setSecurity(response);
+      setMfaCode("");
+      setMfaRecoveryCodes([]);
+      setCancelConfirmOpen(false);
+      setMfaMessage("MFA enrollment cancelled.");
+    } catch {
+      setError("Could not cancel MFA enrollment.");
     } finally {
       setLoading(false);
     }
@@ -163,8 +197,33 @@ export function AccountPage() {
           >
             Confirm enrollment
           </Button>
+          <Button
+            variant="outlined"
+            color="warning"
+            disabled={loading || security?.mfaStatus !== "pending"}
+            onClick={() => setCancelConfirmOpen(true)}
+          >
+            Cancel enrollment
+          </Button>
         </Stack>
       </Paper>
+
+      <Dialog open={cancelConfirmOpen} onClose={() => setCancelConfirmOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Cancel MFA enrollment?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This abandons setup and invalidates the recovery codes shown. Continue?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCancelConfirmOpen(false)} disabled={loading}>
+            Keep enrollment
+          </Button>
+          <Button color="warning" variant="contained" disabled={loading} onClick={() => void cancelMfaEnrollment()}>
+            Cancel enrollment
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
