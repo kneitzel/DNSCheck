@@ -9,24 +9,44 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
+import { ApiError } from "../generated/core/ApiError";
 import { KeysService, type MissingKeyEntry } from "../generated";
+import { formatApiError } from "../apiErrorMessage";
+
+function missingKeysLoadError(error: unknown): string {
+  if (error instanceof ApiError && error.status === 401) {
+    return "Could not load missing key summary (not authenticated). Sign in again and refresh.";
+  }
+  const detail = formatApiError(error);
+  if (detail && detail !== "An unexpected error occurred.") {
+    return `Could not load missing key summary: ${detail}`;
+  }
+  return "Could not load missing key summary.";
+}
 
 export function MissingKeysPanel() {
   const [missing, setMissing] = useState<MissingKeyEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     void (async () => {
       try {
         const response = await KeysService.listMissingKeys();
-        setMissing(response.missing);
+        setMissing(response.missing ?? []);
         setError(null);
-      } catch {
-        setError("Could not load missing key summary.");
+      } catch (loadError) {
+        setError(missingKeysLoadError(loadError));
         setMissing([]);
+      } finally {
+        setLoaded(true);
       }
     })();
   }, []);
+
+  if (!loaded) {
+    return null;
+  }
 
   if (error) {
     return (
@@ -40,7 +60,16 @@ export function MissingKeysPanel() {
   }
 
   if (missing.length === 0) {
-    return null;
+    return (
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h5" gutterBottom>
+          Missing keys
+        </Typography>
+        <Typography color="text.secondary">
+          No missing key files for zones you can read.
+        </Typography>
+      </Paper>
+    );
   }
 
   return (
