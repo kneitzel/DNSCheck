@@ -7,11 +7,13 @@
     "generate-api": "openapi --input ../resources/openapi.yml --output ./src/generated --client fetch",
     "dev": "npm run generate-api && vite",
     "build": "npm run generate-api && tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^6.5.0",
     "@mui/material": "^6.4.8",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
@@ -24,6 +26,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "openapi-typescript-codegen": "^0.29.0",
     "typescript": "^5.8.2",
-    "vite": "^6.2.2"
+    "vite": "^6.2.2",
+    "vitest": "^4.1.10"
   }
 }

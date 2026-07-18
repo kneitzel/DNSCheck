@@ -86,6 +86,10 @@ _Avoid_: Zones directory, config folder, zone list
 A scoped namespace under the zone catalog or keys directory named `{username}.u` for an operator or `{groupname}.g` for a group. Ownership of zone definitions and key files is determined by which owner folder contains them.
 _Avoid_: Scope directory, tenant folder, namespace
 
+**Owner kind**:
+Whether an owner folder belongs to an operator (user) or a group. Encoded in the owner folder name as the `.u` or `.g` suffix.
+_Avoid_: Owner type, folder type, scope kind
+
 **Zone owner**:
 The operator or group that owns a zone definition, identified by the owner folder it is stored in. Zone access rights are derived from zone ownership and group membership.
 _Avoid_: Zone holder, catalog owner, file owner

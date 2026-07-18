@@ -19,6 +19,7 @@ import {
 } from "@mui/material";
 import type { ZoneCatalogEntry } from "../generated";
 import { catalogRef } from "../zoneCatalog";
+import { OwnerFolderLabel } from "./OwnerFolderLabel";
 import { ZoneKeyPicker } from "./ZoneKeyPicker";
 
 type ZoneCatalogPanelProps = {
@@ -144,7 +145,9 @@ export function ZoneCatalogPanel({
           <TableBody>
             {zones.map((zone) => (
               <TableRow key={`${zone.ownerFolder}-${zone.zone}-${zone.filename}`}>
-                <TableCell>{zone.ownerFolder}</TableCell>
+                <TableCell>
+                  <OwnerFolderLabel ownerFolder={zone.ownerFolder} />
+                </TableCell>
                 <TableCell>
                   {zone.valid ? (
                     <Link component="button" variant="body2" onClick={() => onSelectZone(zone)}>
