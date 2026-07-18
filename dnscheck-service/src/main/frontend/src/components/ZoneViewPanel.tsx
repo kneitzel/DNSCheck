@@ -25,6 +25,7 @@ import {
 } from "@mui/material";
 import type { ZoneViewRecord, ZoneViewResponse } from "../generated";
 import { STATUS_COLORS, STATUS_LABELS } from "../zoneViewConstants";
+import { ScopedPathLabel } from "./OwnerFolderLabel";
 
 type ZoneViewPanelProps = {
   selectedZone: string;
@@ -107,7 +108,9 @@ export function ZoneViewPanel({
     <>
       <Paper sx={{ p: 3, mb: 3 }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-          <Typography variant="h5">Zone view: {selectedZone}</Typography>
+          <Typography variant="h5" component="div" sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+            Zone view: <ScopedPathLabel scopedPath={selectedZone} />
+          </Typography>
           <Box sx={{ display: "flex", gap: 1 }}>
             {showReconcileActions && (
               <>

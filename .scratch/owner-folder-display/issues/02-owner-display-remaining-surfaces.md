@@ -4,11 +4,11 @@
 
 **Blocked by:** 01 — Owner display on zone catalog
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Rights summary Owner column uses the shared owner display
-- [ ] Key picker owner mentions use the shared owner display (not hard-coded `.u` / `.g` labels)
-- [ ] Missing-key scoped paths use icon + bare owner + key basename with full-path tooltip
-- [ ] Read-only confirmation/header prose that showed raw owner folders uses the shared display
-- [ ] Display helper covers scoped key path inputs (user and group)
-- [ ] Form inputs and submitted values remain full owner folder / scoped path strings
+- [x] Rights summary Owner column uses the shared owner display
+- [x] Key picker owner mentions use the shared owner display (not hard-coded `.u` / `.g` labels)
+- [x] Missing-key scoped paths use icon + bare owner + key basename with full-path tooltip
+- [x] Read-only confirmation/header prose that showed raw owner folders uses the shared display
+- [x] Display helper covers scoped key path inputs (user and group)
+- [x] Form inputs and submitted values remain full owner folder / scoped path strings

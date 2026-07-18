@@ -17,6 +17,7 @@ import {
   type GroupSummary,
   type SelectableKey,
 } from "../generated";
+import { OwnerFolderLabel, ScopedPathLabel } from "./OwnerFolderLabel";
 
 const emptyKeyContent = `key "example.com" {
   algorithm hmac-sha256;
@@ -135,8 +136,8 @@ export function ZoneKeyPicker({
         </Select>
       </FormControl>
       {value && (
-        <Typography variant="caption" color="text.secondary" display="block">
-          Scoped path: <code>{value}</code>
+        <Typography variant="caption" color="text.secondary" display="block" component="div">
+          Scoped path: <ScopedPathLabel scopedPath={value} />
         </Typography>
       )}
       {loadError && (
@@ -160,18 +161,26 @@ export function ZoneKeyPicker({
                 value={uploadTarget}
                 onChange={(event) => setUploadTarget(event.target.value)}
               >
-                <MenuItem value="personal">Personal ({personalOwnerFolder})</MenuItem>
+                <MenuItem value="personal">
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <span>Personal</span>
+                    <OwnerFolderLabel ownerFolder={personalOwnerFolder} />
+                  </Stack>
+                </MenuItem>
                 {groups.map((group) => (
                   <MenuItem key={group.id} value={String(group.id)}>
-                    Group {group.name}.g
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <span>Group</span>
+                      <OwnerFolderLabel ownerFolder={`${group.name}.g`} />
+                    </Stack>
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
           )}
           {!isAdmin && (
-            <Typography variant="body2" color="text.secondary">
-              Uploads go to your personal folder ({personalOwnerFolder}).
+            <Typography variant="body2" color="text.secondary" component="div">
+              Uploads go to your personal folder (<OwnerFolderLabel ownerFolder={personalOwnerFolder} />).
             </Typography>
           )}
           <TextField

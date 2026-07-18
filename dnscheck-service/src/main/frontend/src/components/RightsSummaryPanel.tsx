@@ -21,6 +21,8 @@ import {
   type RightsSummaryResponse,
   type ZoneRightEntry,
 } from "../generated";
+import { OwnerFolderLabel } from "./OwnerFolderLabel";
+import { parseOwnerFolderDisplay } from "../ownerFolderDisplay";
 
 export type ZoneCatalogOption = {
   ownerFolder: string;
@@ -29,6 +31,11 @@ export type ZoneCatalogOption = {
 
 function catalogOptionKey(option: ZoneCatalogOption): string {
   return `${option.ownerFolder}/${option.zoneName}`;
+}
+
+function formatCatalogOptionLabel(option: ZoneCatalogOption): string {
+  const owner = parseOwnerFolderDisplay(option.ownerFolder);
+  return `${owner.identifier || option.ownerFolder}/${option.zoneName}`;
 }
 
 function formatSources(sources: RightSource[]): string {
@@ -139,7 +146,9 @@ export function RightsSummaryPanel({
               );
               return (
                 <TableRow key={`${entry.ownerFolder}-${entry.zoneName}-${entry.kind}`}>
-                  <TableCell>{entry.ownerFolder}</TableCell>
+                  <TableCell>
+                    <OwnerFolderLabel ownerFolder={entry.ownerFolder} />
+                  </TableCell>
                   <TableCell>{entry.zoneName}</TableCell>
                   <TableCell>{entry.kind}</TableCell>
                   <TableCell>{formatSources(entry.sources)}</TableCell>
@@ -209,7 +218,7 @@ export function AddZoneGrantControls({ zoneOptions, loading, onGrant }: AddZoneG
         >
           {zoneOptions.map((option) => (
             <MenuItem key={catalogOptionKey(option)} value={catalogOptionKey(option)}>
-              {catalogOptionKey(option)}
+              {formatCatalogOptionLabel(option)}
             </MenuItem>
           ))}
         </Select>

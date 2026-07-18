@@ -9,9 +9,10 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import { ApiError } from "../generated/core/ApiError";
 import { KeysService, type MissingKeyEntry } from "../generated";
+import { ScopedPathLabel } from "./OwnerFolderLabel";
 import { formatApiError } from "../apiErrorMessage";
+import { ApiError } from "../generated/core/ApiError";
 
 function missingKeysLoadError(error: unknown): string {
   if (error instanceof ApiError && error.status === 401) {
@@ -91,7 +92,7 @@ export function MissingKeysPanel() {
           {missing.map((entry) => (
             <TableRow key={entry.scopedKeyPath}>
               <TableCell>
-                <code>{entry.scopedKeyPath}</code>
+                <ScopedPathLabel scopedPath={entry.scopedKeyPath} />
               </TableCell>
               <TableCell align="right">{entry.affectedEntryCount}</TableCell>
             </TableRow>

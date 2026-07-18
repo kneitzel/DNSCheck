@@ -19,7 +19,7 @@ import {
 } from "@mui/material";
 import type { ZoneCatalogEntry } from "../generated";
 import { catalogRef } from "../zoneCatalog";
-import { OwnerFolderLabel } from "./OwnerFolderLabel";
+import { OwnerFolderLabel, ScopedPathLabel } from "./OwnerFolderLabel";
 import { ZoneKeyPicker } from "./ZoneKeyPicker";
 
 type ZoneCatalogPanelProps = {
@@ -262,9 +262,12 @@ export function ZoneCatalogPanel({
       <Dialog open={editZoneOpen} onClose={onCloseEditZone} fullWidth maxWidth="sm">
         <DialogTitle>Edit zone definition</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Update nameserver and key file for <strong>{editingZone ? catalogRef(editingZone) : ""}</strong>. The zone
-            name and owner cannot be changed here.
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }} component="div">
+            Update nameserver and key file for{" "}
+            <strong>
+              {editingZone ? <ScopedPathLabel scopedPath={catalogRef(editingZone)} /> : null}
+            </strong>
+            . The zone name and owner cannot be changed here.
           </Typography>
           <TextField
             label="Nameserver"
@@ -301,9 +304,10 @@ export function ZoneCatalogPanel({
       <Dialog open={deleteZoneOpen} onClose={onCloseDeleteZone} fullWidth maxWidth="sm">
         <DialogTitle>Delete zone definition</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            Remove <strong>{deletingZone ? catalogRef(deletingZone) : ""}</strong> from the catalog? This deletes only
-            the JSON definition file, not live DNS records.
+          <DialogContentText component="div">
+            Remove{" "}
+            <strong>{deletingZone ? <ScopedPathLabel scopedPath={catalogRef(deletingZone)} /> : null}</strong> from
+            the catalog? This deletes only the JSON definition file, not live DNS records.
           </DialogContentText>
           {deleteZoneError && (
             <Typography color="error" variant="body2" sx={{ mt: 2 }}>
@@ -322,9 +326,12 @@ export function ZoneCatalogPanel({
       <Dialog open={transferZoneOpen} onClose={onCloseTransferZone} fullWidth maxWidth="sm">
         <DialogTitle>Transfer zone ownership</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Move <strong>{transferringZone ? catalogRef(transferringZone) : ""}</strong> to another owner folder.
-            Supplemental grants follow the new owner.
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }} component="div">
+            Move{" "}
+            <strong>
+              {transferringZone ? <ScopedPathLabel scopedPath={catalogRef(transferringZone)} /> : null}
+            </strong>{" "}
+            to another owner folder. Supplemental grants follow the new owner.
           </Typography>
           <TextField
             label="Target owner folder"
