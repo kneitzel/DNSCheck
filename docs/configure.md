@@ -59,10 +59,18 @@ quarkus.datasource.db-kind=postgresql
 quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/dnscheck
 quarkus.datasource.username=dnscheck
 quarkus.datasource.password=change-me
-quarkus.hibernate-orm.database.generation=update
+quarkus.hibernate-orm.schema-management.strategy=update
 ```
 
 Environment variable equivalents use the `QUARKUS_DATASOURCE_*` prefix (see Docker Compose in the repository root).
+
+`schema-management.strategy=update` is a best-effort Hibernate schema update for development and small deployments. Prefer Flyway/Liquibase for production when schema changes become frequent.
+
+If you upgraded to MFA while operators already existed and login fails with `Column "MFA_ENABLED" not found`, either restart on a build that includes `@ColumnDefault("false")` on that field, or apply once:
+
+```sql
+ALTER TABLE operators ADD COLUMN mfa_enabled BOOLEAN DEFAULT FALSE NOT NULL;
+```
 
 Supplemental zone grants store `owner_folder` with `zone_name`. When migrating from a flat catalog, update grant rows as described in [Migrating to scoped ownership](migration-scoped-ownership.md#update-supplemental-zone-grants).
 

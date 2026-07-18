@@ -7,6 +7,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -24,7 +25,13 @@ public class Operator extends PanacheEntity {
     @Column(nullable = false)
     public boolean enabled = true;
 
+    /**
+     * DEFAULT is required so schema-update can add this NOT NULL column to databases
+     * that already contain operator rows (Hibernate otherwise fails the ALTER and leaves
+     * the column missing, which breaks login).
+     */
     @Column(name = "mfa_enabled", nullable = false)
+    @ColumnDefault("false")
     public boolean mfaEnabled = false;
 
     @Lob
