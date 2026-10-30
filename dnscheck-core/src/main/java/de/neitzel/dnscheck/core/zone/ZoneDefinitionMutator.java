@@ -56,7 +56,11 @@ public final class ZoneDefinitionMutator {
                 existing.zone(), updatedNameserver, updatedKeyFile, existing.records(), zoneFile);
         store.write(updated);
         return ZoneCatalogEntry.valid(
-                identity.ownerFolder().folderName(), zone, identity.relativePath(), updatedNameserver);
+                identity.ownerFolder().folderName(),
+                zone,
+                identity.relativePath(),
+                updatedNameserver,
+                updatedKeyFile);
     }
 
     public void delete(Path zonesDirectory, String ownerFolder, String zone) throws IOException {
@@ -127,6 +131,7 @@ public final class ZoneDefinitionMutator {
                 target.ownerFolder().folderName(),
                 zone,
                 target.relativePath(),
-                existing.nameserver());
+                existing.nameserver(),
+                existing.keyFile());
     }
 }

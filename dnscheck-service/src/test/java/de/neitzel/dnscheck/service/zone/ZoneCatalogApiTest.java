@@ -138,6 +138,7 @@ class ZoneCatalogApiTest {
                 .body("entries.ownerFolder", hasItem(ADMIN_OWNER))
                 .body("entries.ownerFolder", hasItem(READER_OWNER))
                 .body("entries.find { it.filename == 'admin.u/wrong.json' }.valid", is(false))
+                .body("entries.find { it.filename == 'admin.u/example.com.json' }.keyFile", is("admin.u/example.com.key"))
                 .extract()
                 .response();
         OpenApiContractSupport.assertResponseConforms("listZones", Request.Method.GET, "/api/v1/zones", response);

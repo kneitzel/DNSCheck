@@ -26,6 +26,7 @@ public final class ZoneCatalogApiMapper {
         apiEntry.setValid(entry.valid());
         apiEntry.setError(entry.error());
         apiEntry.setNameserver(entry.nameserver());
+        apiEntry.setKeyFile(entry.keyFile());
         return apiEntry;
     }
 

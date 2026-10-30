@@ -98,7 +98,12 @@ public final class ZoneCatalog {
         String fallbackZone = stripJsonSuffix(basename);
         try {
             ZoneDefinition definition = store.read(zoneFile);
-            return ZoneCatalogEntry.valid(ownerFolder, definition.zone(), relativePath, definition.nameserver());
+            return ZoneCatalogEntry.valid(
+                    ownerFolder,
+                    definition.zone(),
+                    relativePath,
+                    definition.nameserver(),
+                    definition.keyFile());
         } catch (IllegalArgumentException e) {
             String zone = store.peekZoneName(zoneFile).orElse(fallbackZone);
             return ZoneCatalogEntry.invalid(ownerFolder, zone, relativePath, e.getMessage());

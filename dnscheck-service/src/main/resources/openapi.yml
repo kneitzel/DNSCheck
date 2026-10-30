@@ -2062,6 +2062,9 @@ components:
           type: string
         nameserver:
           type: string
+        keyFile:
+          type: string
+          description: Scoped key path from the zone definition (present when valid)
     ZoneViewResponse:
       type: object
       required:

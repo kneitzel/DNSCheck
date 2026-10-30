@@ -470,7 +470,7 @@ export default function App() {
   const openEditZone = (zone: ZoneCatalogEntry) => {
     setEditingZone(zone);
     setEditZoneNameserver(zone.nameserver ?? "");
-    setEditZoneKeyFile(`${zone.ownerFolder}/${zone.zone}.key`);
+    setEditZoneKeyFile(zone.keyFile ?? "");
     setEditZoneError(null);
     setEditZoneOpen(true);
   };

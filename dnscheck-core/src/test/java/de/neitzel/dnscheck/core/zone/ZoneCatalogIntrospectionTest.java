@@ -59,6 +59,7 @@ class ZoneCatalogIntrospectionTest {
         assertEquals("admin.u", valid.ownerFolder());
         assertEquals("example.com", valid.zone());
         assertEquals("ns1.example.com", valid.nameserver());
+        assertEquals("admin.u/example.com.key", valid.keyFile());
 
         ZoneCatalogEntry broken = findByFilename(entries, "admin.u/broken.json");
         assertEquals("broken", broken.zone());

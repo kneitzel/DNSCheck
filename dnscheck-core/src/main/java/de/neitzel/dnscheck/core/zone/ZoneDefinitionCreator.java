@@ -51,6 +51,6 @@ public final class ZoneDefinitionCreator {
         ZoneDefinition definition = new ZoneDefinition(zone, nameserver, keyFile, List.of(), zoneFile);
         store.write(definition);
         return ZoneCatalogEntry.valid(
-                identity.ownerFolder().folderName(), zone, identity.relativePath(), nameserver);
+                identity.ownerFolder().folderName(), zone, identity.relativePath(), nameserver, keyFile);
     }
 }
