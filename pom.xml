@@ -16,6 +16,7 @@
         <module>dnscheck-core</module>
         <module>dnscheck-service</module>
         <module>dnscheck-cli</module>
+        <module>dnscheck-fx</module>
     </modules>
 
     <properties>

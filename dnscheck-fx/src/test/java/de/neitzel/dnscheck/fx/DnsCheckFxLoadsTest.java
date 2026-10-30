@@ -1,0 +1,143 @@
+package de.neitzel.dnscheck.fx;
+
+import de.neitzel.dnscheck.fx.model.CatalogSession;
+import de.neitzel.dnscheck.fx.model.RecordEditor;
+import de.neitzel.dnscheck.fx.model.ZoneEditor;
+import de.neitzel.dnscheck.fx.view.CatalogController;
+import de.neitzel.dnscheck.fx.view.RecordForm;
+import de.neitzel.dnscheck.fx.view.ZoneController;
+import de.neitzel.fx.view.LoadedView;
+import de.neitzel.fx.view.ViewLoader;
+import de.neitzel.injection.ApplicationContext;
+import javafx.application.Platform;
+import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+
+/**
+ * Loads the catalog and a zone definition the way the desktop application does.
+ */
+class DnsCheckFxLoadsTest {
+
+    @BeforeAll
+    static void startJavaFx() throws InterruptedException {
+        CountDownLatch started = new CountDownLatch(1);
+        try {
+            Platform.startup(started::countDown);
+        } catch (IllegalStateException alreadyStarted) {
+            started.countDown();
+        }
+        if (!started.await(10, TimeUnit.SECONDS)) {
+            fail("JavaFX toolkit did not start");
+        }
+    }
+
+    @Test
+    void catalogAndZoneViewsLoad() throws Exception {
+        onFx(() -> {
+            ApplicationContext context = new ApplicationContext(DnsCheckFxApp.class);
+            Desk desk = context.getComponent(Desk.class);
+            CatalogSession session = new CatalogSession();
+            session.setZonesDirectory("/no/such/zones");
+            session.setKeysDirectory("/no/such/keys");
+            session.setEntries(new ArrayList<>());
+            session.setOutcome("");
+            desk.prepare(session, context);
+
+            LoadedView catalog = ViewLoader.load(
+                    CatalogController.class.getResource("Catalog.fxml"), session, context);
+            assertTrue(catalog.getViewModel().getLatestMessage().getText().contains("does not exist"));
+
+            ZoneEditor editor = new ZoneEditor();
+            editor.setOwnerFolder("admin.u");
+            editor.setZone("example.com");
+            editor.setNameserver("ns1.example.com");
+            editor.setKeyFile("admin.u/example.com.key");
+            editor.setRecords(new ArrayList<>());
+            editor.setOutcome("");
+            RecordEditor record = new RecordEditor();
+            record.setName("mail.example.com.");
+            record.setType("A");
+            record.setRdata("192.0.2.10");
+            editor.getRecords().add(record);
+            desk.edit(editor);
+
+            LoadedView zone = ViewLoader.load(ZoneController.class.getResource("Zone.fxml"), editor, context);
+            assertEquals(1, count(zone.getRoot(), RecordForm.class));
+            assertEquals("ns1.example.com", text(zone.getRoot(), "ns1.example.com"));
+            assertEquals("192.0.2.10", text(zone.getRoot(), "192.0.2.10"));
+        });
+    }
+
+    private static int count(Node node, Class<?> type) {
+        int found = type.isInstance(node) ? 1 : 0;
+        if (node instanceof ScrollPane scroll && scroll.getContent() != null) {
+            found += count(scroll.getContent(), type);
+        }
+        if (node instanceof Parent parent) {
+            for (Node child : parent.getChildrenUnmodifiable()) {
+                if (node instanceof ScrollPane scroll && child == scroll.getContent()) {
+                    continue;
+                }
+                found += count(child, type);
+            }
+        }
+        return found;
+    }
+
+    private static String text(Node node, String expected) {
+        if (node instanceof TextField field && expected.equals(field.getText())) {
+            return field.getText();
+        }
+        if (node instanceof ScrollPane scroll && scroll.getContent() != null) {
+            String found = text(scroll.getContent(), expected);
+            if (found != null) {
+                return found;
+            }
+        }
+        if (node instanceof Parent parent) {
+            for (Node child : parent.getChildrenUnmodifiable()) {
+                if (node instanceof ScrollPane scroll && child == scroll.getContent()) {
+                    continue;
+                }
+                String found = text(child, expected);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static void onFx(Runnable check) throws InterruptedException {
+        CountDownLatch done = new CountDownLatch(1);
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Platform.runLater(() -> {
+            try {
+                check.run();
+            } catch (Throwable thrown) {
+                failure.set(thrown);
+            } finally {
+                done.countDown();
+            }
+        });
+        if (!done.await(10, TimeUnit.SECONDS)) {
+            fail("JavaFX check did not finish");
+        }
+        if (failure.get() != null) {
+            fail("view check failed", failure.get());
+        }
+    }
+}

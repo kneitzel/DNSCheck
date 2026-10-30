@@ -22,7 +22,7 @@ In addition to the Unlicense terms:
 
 ---
 
-DNSCheck verifies live DNS against zone definition JSON files and reconciles drift via BIND `nsupdate`. It ships as a **Quarkus service** (web UI, REST API, scheduled reconciliation) and a **CLI** for ad-hoc or cron-based runs.
+DNSCheck verifies live DNS against zone definition JSON files and reconciles drift via BIND `nsupdate`. It ships as a **Quarkus service** (web UI, REST API, scheduled reconciliation), a **CLI** for ad-hoc or cron-based runs, and a **JavaFX desktop** application for the same zone catalog.
 
 See [CONTEXT.md](CONTEXT.md) for domain terminology.
 
@@ -70,6 +70,7 @@ See [CONTEXT.md](CONTEXT.md) for domain terminology.
 | [Migrating to scoped ownership](docs/migration-scoped-ownership.md) | Operators upgrading from flat `zones/` / `keys/` layouts |
 | [Operator guide](docs/operator-guide.md) | DNS operators — web UI workflows |
 | [CLI](docs/cli.md) | Automation — `dnscheck reconcile owner/zoneName`, cron, Docker |
+| [Desktop](dnscheck-fx/README.md) | JavaFX — edit zone definitions and reconcile one catalog entry |
 
 API contract: `GET /api/v1/openapi.json` (Swagger UI available in dev profile only).
 
@@ -79,6 +80,7 @@ API contract: `GET /api/v1/openapi.json` (Swagger UI available in dev profile on
 |----------|---------|
 | `dnscheck-service` | Long-running service: UI, API, scheduler, operator auth |
 | `dnscheck-cli` | One-shot or cron reconciliation without the service |
+| `dnscheck-fx` | JavaFX desktop application for the zone catalog |
 | Docker image | Single image; default runs the service, `cli` entrypoint runs the CLI |
 
 ## Typical deployment
