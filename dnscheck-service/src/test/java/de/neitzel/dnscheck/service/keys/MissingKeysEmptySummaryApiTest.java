@@ -23,6 +23,9 @@ import static org.hamcrest.Matchers.notNullValue;
 @QuarkusTest
 class MissingKeysEmptySummaryApiTest {
 
+    /**
+     * Clears and recreates the test key directory and the zone catalog.
+     */
     @BeforeEach
     void cleanDirs() throws Exception {
         cleanDir(Path.of("target/test-keys"));
@@ -31,6 +34,9 @@ class MissingKeysEmptySummaryApiTest {
         Files.createDirectories(Path.of("target/test-zones"));
     }
 
+    /**
+     * When no TSIG key is missing, the missing-key summary is successful and the missing list is empty.
+     */
     @Test
     void missingKeySummaryWhenNoKeysMissingReturnsEmptyArray() {
         String cookie = given()
@@ -54,6 +60,11 @@ class MissingKeysEmptySummaryApiTest {
                 .body("missing", empty());
     }
 
+    /**
+     * Deletes a directory tree when it exists.
+     *
+     * @param dir directory to delete.
+     */
     private static void cleanDir(Path dir) throws Exception {
         if (!Files.exists(dir)) {
             return;

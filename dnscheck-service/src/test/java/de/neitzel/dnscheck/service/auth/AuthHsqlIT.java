@@ -14,13 +14,22 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 
+/**
+ * Tests operator login against the HSQL test profile.
+ */
 @QuarkusTest
 @TestProfile(HsqlTestProfile.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class AuthHsqlIT {
 
+    /**
+     * Session cookie captured from login on the HSQL database.
+     */
     private static String sessionCookie;
 
+    /**
+     * Login with the bootstrap operator establishes a session when the database is HSQL.
+     */
     @Test
     @Order(1)
     void loginEstablishesSessionOnHsql() {
@@ -38,6 +47,9 @@ class AuthHsqlIT {
                 .getValue();
     }
 
+    /**
+     * A request that sends the HSQL session cookie can read reconciliation status.
+     */
     @Test
     @Order(2)
     void authenticatedRequestsAccessProtectedEndpointsOnHsql() {

@@ -28,15 +28,27 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests password changes and the zone rights visible to an operator and an admin.
+ */
 @QuarkusTest
 class ManagementApiTest {
 
+    /**
+     * Mock live zone loader used by zone right checks.
+     */
     @InjectMock
     LiveZoneLoader liveZoneLoader;
 
+    /**
+     * Service used to create the reader and to grant the read zone right.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Stubs an empty live zone and writes the admin owner folder's zone definition.
+     */
     @BeforeEach
     void stubLiveZone() throws Exception {
         when(liveZoneLoader.load(any(ZoneDefinition.class), any(Path.class)))
@@ -56,6 +68,9 @@ class ManagementApiTest {
                 """);
     }
 
+    /**
+     * Deletes the fixture operators and the rights-test group before each test.
+     */
     @BeforeEach
     @Transactional
     void cleanupManagementFixtures() {
@@ -70,6 +85,11 @@ class ManagementApiTest {
         }
     }
 
+    /**
+     * Deletes the operator and that operator's grants and group memberships when the operator exists.
+     *
+     * @param username operator username to delete.
+     */
     private void deleteOperatorIfExists(String username) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -84,6 +104,14 @@ class ManagementApiTest {
         operator.delete();
     }
 
+    /**
+     * Creates the operator through the admin API, or resets the password when the operator already exists.
+     *
+     * @param adminCookie session cookie for the admin.
+     * @param username operator username.
+     * @param password operator password to set.
+     * @return the operator id.
+     */
     private long ensureOperator(String adminCookie, String username, String password) {
         Operator existing = Operator.findByUsername(username);
         if (existing != null) {
@@ -109,6 +137,9 @@ class ManagementApiTest {
                 .longValue();
     }
 
+    /**
+     * An operator can change that operator's password and then sign in with the new password.
+     */
     @Test
     @Transactional
     void operatorChangesOwnPassword() {
@@ -135,6 +166,9 @@ class ManagementApiTest {
                 .statusCode(200);
     }
 
+    /**
+     * A password change with the wrong current password is rejected.
+     */
     @Test
     void changePasswordRejectsWrongCurrentPassword() {
         String cookie = login("admin", "admin");
@@ -149,6 +183,9 @@ class ManagementApiTest {
                 .statusCode(401);
     }
 
+    /**
+     * A group member sees the read zone right inherited from the group's zone grant.
+     */
     @Test
     void myRightsIncludesInheritedGroupGrant() {
         String adminCookie = login("admin", "admin");
@@ -209,6 +246,9 @@ class ManagementApiTest {
                         hasItem("rights-test-group"));
     }
 
+    /**
+     * An admin can read the reader's zone rights and sees a direct read grant on the admin zone.
+     */
     @Test
     void operatorRightsShowsDirectAndGroupSources() {
         String adminCookie = login("admin", "admin");
@@ -229,6 +269,9 @@ class ManagementApiTest {
                         notNullValue());
     }
 
+    /**
+     * An admin can set a new password, and the operator can sign in with it.
+     */
     @Test
     @Transactional
     void adminResetsOperatorPassword() {
@@ -253,6 +296,9 @@ class ManagementApiTest {
                 .statusCode(200);
     }
 
+    /**
+     * An operator who is not an admin cannot read operator rights.
+     */
     @Test
     void nonAdminCannotReadOperatorRights() {
         ensureReader();
@@ -267,6 +313,9 @@ class ManagementApiTest {
                 .statusCode(403);
     }
 
+    /**
+     * Ensures the reader operator exists and holds the read zone right on the admin zone.
+     */
     @Transactional
     void ensureReader() {
         Operator reader = Operator.findByUsername("reader");
@@ -286,6 +335,13 @@ class ManagementApiTest {
         }
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

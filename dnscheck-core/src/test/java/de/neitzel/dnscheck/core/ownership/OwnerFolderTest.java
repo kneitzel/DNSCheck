@@ -7,8 +7,14 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+/**
+ * Tests parsing of owner folder names into owner kind and identifier.
+ */
 class OwnerFolderTest {
 
+    /**
+     * An operator owner folder parses as a user owner with the name before the suffix.
+     */
     @Test
     void parsesUserOwnerFolder() {
         OwnerFolder folder = OwnerFolder.parse("admin.u");
@@ -18,6 +24,9 @@ class OwnerFolderTest {
         assertEquals("admin.u", folder.folderName());
     }
 
+    /**
+     * A group owner folder parses as a group owner with the name before the suffix.
+     */
     @Test
     void parsesGroupOwnerFolder() {
         OwnerFolder folder = OwnerFolder.parse("dns-team.g");
@@ -27,6 +36,9 @@ class OwnerFolderTest {
         assertEquals("dns-team.g", folder.folderName());
     }
 
+    /**
+     * A name that is not a user or group owner folder is rejected.
+     */
     @ParameterizedTest
     @ValueSource(strings = {"admin", "admin.x", "../admin.u", "admin.u.extra", "admin.G", ""})
     void rejectsInvalidOwnerFolder(String value) {

@@ -14,8 +14,14 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Tests building a managed record and enforcing it on a zone definition.
+ */
 class ZoneRecordCreatorTest {
 
+    /**
+     * A relative record name becomes an FQDN on the built managed record.
+     */
     @Test
     void buildRecordSpecNormalizesRelativeName() {
         ZoneRecordCreator creator = new ZoneRecordCreator();
@@ -25,6 +31,9 @@ class ZoneRecordCreatorTest {
         assertEquals("192.0.2.50", spec.rdata());
     }
 
+    /**
+     * Enforcing a managed record adds it to the zone definition and writes the FQDN into the file.
+     */
     @Test
     void enforceRecordWritesDefinition(@TempDir Path zonesDir) throws Exception {
         Path zoneFile = zonesDir.resolve("example.com.json");
@@ -49,6 +58,9 @@ class ZoneRecordCreatorTest {
         assertTrue(Files.readString(zoneFile).contains("wiki.example.com."));
     }
 
+    /**
+     * An add change for a managed record with no TTL uses the zone default TTL.
+     */
     @Test
     void buildAddChangeUsesZoneDefaultTtlWhenOmitted() {
         ZoneRecordCreator creator = new ZoneRecordCreator();

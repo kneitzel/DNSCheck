@@ -12,8 +12,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Tests introspection of zone catalog entries stored under owner folders.
+ */
 class ZoneCatalogIntrospectionTest {
 
+    /**
+     * Introspection returns the valid zone definition, the broken file, and the filename mismatch, and ignores a file that is not inside an owner folder.
+     */
     @Test
     void introspectReturnsValidAndInvalidEntries(@TempDir Path tempDir) throws Exception {
         Path ownerDir = tempDir.resolve("admin.u");
@@ -72,6 +78,13 @@ class ZoneCatalogIntrospectionTest {
         assertTrue(filenameMismatch.error().contains("does not match filename"));
     }
 
+    /**
+     * Returns the catalog entry with the given relative filename.
+     *
+     * @param entries catalog entries returned by introspection.
+     * @param filename relative path of the zone definition.
+     * @return the matching catalog entry.
+     */
     private static ZoneCatalogEntry findByFilename(List<ZoneCatalogEntry> entries, String filename) {
         return entries.stream()
                 .filter(entry -> entry.filename().equals(filename))

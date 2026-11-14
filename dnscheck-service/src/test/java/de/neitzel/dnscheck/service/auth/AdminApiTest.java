@@ -33,30 +33,63 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests admin management of operators, groups, global rights, and zone rights.
+ */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class AdminApiTest {
 
+    /**
+     * Owner folder of the group that owns the sample zone.
+     */
     private static final String GROUP_OWNER = "dns-readers.g";
 
+    /**
+     * Mock live zone loader used so zone view checks do not contact DNS.
+     */
     @InjectMock
     LiveZoneLoader liveZoneLoader;
 
+    /**
+     * Service used to create fixture operators.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Session cookie for the admin operator.
+     */
     private static String adminCookie;
+    /**
+     * Session cookie for the operator who is not an admin.
+     */
     private static String readerCookie;
+    /**
+     * Database id of the operator created by the admin.
+     */
     private static Long createdOperatorId;
+    /**
+     * Database id of the group created by the admin.
+     */
     private static Long createdGroupId;
+    /**
+     * Database id of the supplemental zone grant created by the admin.
+     */
     private static Long zoneGrantId;
 
+    /**
+     * Stubs live zone loading with an empty live zone.
+     */
     @BeforeEach
     void stubLiveZone() throws Exception {
         when(liveZoneLoader.load(any(ZoneDefinition.class), any(Path.class)))
                 .thenReturn(new LiveZone("example.com", 3600, List.of()));
     }
 
+    /**
+     * Writes the group owner folder's zone definition and removes leftover operators, groups, and grants.
+     */
     @Test
     @Order(0)
     @Transactional
@@ -79,6 +112,9 @@ class AdminApiTest {
         cleanupManagedTestData();
     }
 
+    /**
+     * Removes the managed operator, the dns-readers group, their grants, and a leftover zone definition.
+     */
     @Transactional
     void cleanupManagedTestData() {
         Operator managed = Operator.findByUsername("managed");
@@ -104,6 +140,9 @@ class AdminApiTest {
         }
     }
 
+    /**
+     * An operator who is not an admin cannot list operators.
+     */
     @Test
     @Order(1)
     void nonAdminCannotListOperators() {
@@ -116,6 +155,9 @@ class AdminApiTest {
                 .statusCode(403);
     }
 
+    /**
+     * An admin creates an operator, adds that operator to a group, grants the zone-create global right, and grants the read zone right on the group zone.
+     */
     @Test
     @Order(2)
     void adminCreatesOperatorGroupAndGrants() {
@@ -184,6 +226,9 @@ class AdminApiTest {
                 .path("id")).longValue();
     }
 
+    /**
+     * A group member can read the zone view for the zone owned by that group.
+     */
     @Test
     @Order(3)
     void groupMemberCanAccessGroupZoneView() {
@@ -197,6 +242,9 @@ class AdminApiTest {
                 .body("zone", is("example.com"));
     }
 
+    /**
+     * An admin disables the operator, removes the group membership, and deletes the supplemental zone grant, and the disabled operator can no longer sign in.
+     */
     @Test
     @Order(4)
     void adminDisablesOperatorAndRemovesGroupMembership() {
@@ -233,6 +281,9 @@ class AdminApiTest {
                 .statusCode(401);
     }
 
+    /**
+     * An admin can list operators and groups, including the operator and group created for this test.
+     */
     @Test
     @Order(5)
     void adminListsOperatorsAndGroups() {
@@ -256,6 +307,9 @@ class AdminApiTest {
                 .body("groups.name", hasItem("dns-readers"));
     }
 
+    /**
+     * After the operator is enabled again, that operator no longer has the zone right to read the group zone view.
+     */
     @Test
     @Order(6)
     void reenabledOperatorWithoutGroupMembershipLosesZoneAccess() {
@@ -278,6 +332,9 @@ class AdminApiTest {
                 .statusCode(403);
     }
 
+    /**
+     * The zone-create global right lets the operator create a zone definition in that operator's owner folder, and another operator does not see it in the zone catalog.
+     */
     @Test
     @Order(7)
     void zoneCreateGrantAllowsCreatingZonesInOwnFolder() throws Exception {
@@ -307,6 +364,13 @@ class AdminApiTest {
         Files.deleteIfExists(Path.of("target/test-zones/managed.u/managed.test.json"));
     }
 
+    /**
+     * Returns the named operator, creating it when it is missing.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the existing or newly created operator.
+     */
     private Operator ensureOperator(String username, String password) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -315,6 +379,13 @@ class AdminApiTest {
         return operator;
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

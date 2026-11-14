@@ -8,6 +8,9 @@ import javafx.beans.property.Property;
  */
 public final class Attributes {
 
+    /**
+     * Prevents instantiation.
+     */
     private Attributes() {
     }
 

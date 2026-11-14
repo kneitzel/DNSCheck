@@ -10,8 +10,14 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+/**
+ * Tests reading a zone definition from its JSON file.
+ */
 class ZoneDefinitionStoreTest {
 
+    /**
+     * Reading a zone definition normalizes the apex managed record and the deletion marker name to FQDN.
+     */
     @Test
     void readsZoneDefinitionAndNormalizesNames(@TempDir Path tempDir) throws Exception {
         Path zoneFile = tempDir.resolve("example.com.json");
@@ -45,6 +51,9 @@ class ZoneDefinitionStoreTest {
         assertEquals("_bad.example.com.", definition.deletionMarkers().getFirst().nameFqdn());
     }
 
+    /**
+     * A zone definition whose zone name does not match the filename is rejected.
+     */
     @Test
     void rejectsFilenameMismatch(@TempDir Path tempDir) throws Exception {
         Path zoneFile = tempDir.resolve("wrong.json");

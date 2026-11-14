@@ -17,12 +17,21 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 
+/**
+ * Tests session login, logout, and access to protected endpoints.
+ */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class AuthApiTest {
 
+    /**
+     * Session cookie captured after a successful login.
+     */
     private static String sessionCookie;
 
+    /**
+     * A request without a session is rejected when it calls a protected endpoint.
+     */
     @Test
     @Order(1)
     void protectedEndpointRejectsUnauthenticatedRequests() {
@@ -33,6 +42,9 @@ class AuthApiTest {
                 .statusCode(401);
     }
 
+    /**
+     * Login with a wrong password is rejected.
+     */
     @Test
     @Order(2)
     void loginRejectsInvalidCredentials() {
@@ -45,6 +57,9 @@ class AuthApiTest {
                 .statusCode(401);
     }
 
+    /**
+     * Login with the bootstrap operator password establishes a session cookie.
+     */
     @Test
     @Order(3)
     void loginEstablishesSession() {
@@ -62,6 +77,9 @@ class AuthApiTest {
         sessionCookie = response.detailedCookie(SessionService.COOKIE_NAME).getValue();
     }
 
+    /**
+     * A request that sends the session cookie can read reconciliation status.
+     */
     @Test
     @Order(4)
     void authenticatedRequestsAccessProtectedEndpoints() {
@@ -75,6 +93,9 @@ class AuthApiTest {
                 .body("zoneOutcomes", notNullValue());
     }
 
+    /**
+     * Logout completes, and the same session cookie is then rejected by a protected endpoint.
+     */
     @Test
     @Order(5)
     void logoutClearsSession() {
@@ -93,6 +114,9 @@ class AuthApiTest {
                 .statusCode(401);
     }
 
+    /**
+     * The health endpoint stays available without a session.
+     */
     @Test
     @Order(6)
     void healthRemainsPublic() {
@@ -104,6 +128,9 @@ class AuthApiTest {
                 .body("status", is("UP"));
     }
 
+    /**
+     * The OpenAPI document names the session cookie and requires it on status but not on login.
+     */
     @Test
     @Order(7)
     void openapiDescribesSessionSecurity() {

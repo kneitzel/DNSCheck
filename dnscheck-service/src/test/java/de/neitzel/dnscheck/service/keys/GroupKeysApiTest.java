@@ -18,9 +18,15 @@ import java.util.Map;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 
+/**
+ * Tests TSIG key files stored in a group owner folder.
+ */
 @QuarkusTest
 class GroupKeysApiTest {
 
+    /**
+     * BIND native key file body used as a valid group TSIG key.
+     */
     private static final String VALID_KEY = """
             key "shared.example" {
               algorithm hmac-sha256;
@@ -28,11 +34,20 @@ class GroupKeysApiTest {
             };
             """;
 
+    /**
+     * Service used to create the group member.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Database id of the group that owns the key files.
+     */
     private long groupId;
 
+    /**
+     * Clears the test key directory before each test.
+     */
     @BeforeEach
     void prepareKeysDir() throws Exception {
         Path keysDir = Path.of("target/test-keys");
@@ -59,6 +74,9 @@ class GroupKeysApiTest {
         }
     }
 
+    /**
+     * Ensures the group exists and that the member operator belongs to it.
+     */
     @BeforeEach
     @Transactional
     void seedGroup() {
@@ -76,6 +94,9 @@ class GroupKeysApiTest {
         groupId = group.id;
     }
 
+    /**
+     * An admin can create, list, download, and delete a TSIG key in the group owner folder.
+     */
     @Test
     void adminCanManageGroupKeys() {
         String adminCookie = login("admin", "admin");
@@ -114,6 +135,9 @@ class GroupKeysApiTest {
                 .statusCode(204);
     }
 
+    /**
+     * A group member can list the group's key files but cannot download or create them.
+     */
     @Test
     void memberCanListButNotDownloadGroupKeys() {
         String adminCookie = login("admin", "admin");
@@ -153,6 +177,9 @@ class GroupKeysApiTest {
                 .statusCode(403);
     }
 
+    /**
+     * A group member can read the group detail.
+     */
     @Test
     void memberCanViewGroupDetail() {
         String memberCookie = login("group-member", "group-member");
@@ -165,6 +192,13 @@ class GroupKeysApiTest {
                 .body("name", is("keys-group"));
     }
 
+    /**
+     * Returns the named operator, creating it when it is missing.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the existing or newly created operator.
+     */
     private Operator ensureOperator(String username, String password) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -173,6 +207,13 @@ class GroupKeysApiTest {
         return operator;
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

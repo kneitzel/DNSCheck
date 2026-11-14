@@ -4,8 +4,16 @@ import io.quarkus.test.junit.QuarkusTestProfile;
 
 import java.util.Map;
 
+/**
+ * Test profile that runs DNSCheck against an in-memory HSQL database.
+ */
 public class HsqlTestProfile implements QuarkusTestProfile {
 
+    /**
+     * Returns the HSQL datasource, disabled schedule, and bootstrap operator credentials.
+     *
+     * @return the configuration overrides for this profile.
+     */
     @Override
     public Map<String, String> getConfigOverrides() {
         return Map.of(

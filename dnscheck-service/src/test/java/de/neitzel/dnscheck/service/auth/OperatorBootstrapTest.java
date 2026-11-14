@@ -9,8 +9,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Tests how the first operator is bootstrapped from configuration.
+ */
 class OperatorBootstrapTest {
 
+    /**
+     * A configured username and password are used, and the password is not marked as generated.
+     */
     @Test
     void usesConfiguredCredentialsWhenBothPresent() {
         Optional<OperatorBootstrap.BootstrapCredentials> credentials =
@@ -22,6 +28,9 @@ class OperatorBootstrapTest {
         assertFalse(credentials.get().generated());
     }
 
+    /**
+     * Missing credentials produce a generated password for the admin operator.
+     */
     @Test
     void generatesAdminCredentialsWhenBothAbsent() {
         Optional<OperatorBootstrap.BootstrapCredentials> credentials =
@@ -33,6 +42,9 @@ class OperatorBootstrapTest {
         assertTrue(credentials.get().generated());
     }
 
+    /**
+     * Two generated bootstrap passwords differ.
+     */
     @Test
     void generatesUniquePasswords() {
         Optional<OperatorBootstrap.BootstrapCredentials> first =
@@ -45,6 +57,9 @@ class OperatorBootstrapTest {
         assertNotEquals(first.get().password(), second.get().password());
     }
 
+    /**
+     * A username without a password, or a password without a username, does not produce bootstrap credentials.
+     */
     @Test
     void rejectsPartiallyConfiguredCredentials() {
         assertTrue(OperatorBootstrap.resolveCredentials(Optional.of("ops"), Optional.empty()).isEmpty());

@@ -22,18 +22,39 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.hasSize;
 
+/**
+ * Tests zone catalog entries in operator and group owner folders.
+ */
 @QuarkusTest
 class ScopedZoneCatalogApiTest {
 
+    /**
+     * Owner folder of the operator who creates a personal zone.
+     */
     private static final String PERSONAL_OWNER = "scoped-owner.u";
+    /**
+     * Name of the group that owns the shared zone.
+     */
     private static final String GROUP_NAME = "scoped-zones-group";
+    /**
+     * Owner folder of the group that owns the shared zone.
+     */
     private static final String GROUP_OWNER = "scoped-zones-group.g";
 
+    /**
+     * Service used to create operators and grant the zone-create global right.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Database id of the group that owns the shared zone.
+     */
     private long groupId;
 
+    /**
+     * Clears the test zone catalog before each test.
+     */
     @BeforeEach
     void prepareZonesDir() throws Exception {
         Path zonesDir = Path.of("target/test-zones");
@@ -60,6 +81,9 @@ class ScopedZoneCatalogApiTest {
         }
     }
 
+    /**
+     * Creates the owner, member, and outsider, grants the owner the zone-create global right, and puts the member and admin in the group.
+     */
     @BeforeEach
     @Transactional
     void seedOperatorsAndGroup() {
@@ -88,6 +112,9 @@ class ScopedZoneCatalogApiTest {
         groupId = group.id;
     }
 
+    /**
+     * An operator with the zone-create global right can create a zone definition in that operator's owner folder.
+     */
     @Test
     void personalZoneCreateInOwnFolder() throws Exception {
         String ownerCookie = login("scoped-owner", "scoped-owner");
@@ -111,6 +138,9 @@ class ScopedZoneCatalogApiTest {
         assert Files.isRegularFile(Path.of("target/test-zones/scoped-owner.u/personal.test.json"));
     }
 
+    /**
+     * An admin who is a group member can create a zone definition in the group owner folder.
+     */
     @Test
     void adminCanCreateGroupZoneInMemberFolder() throws Exception {
         String adminCookie = login("admin", "admin");
@@ -133,6 +163,9 @@ class ScopedZoneCatalogApiTest {
         assert Files.isRegularFile(Path.of("target/test-zones/scoped-zones-group.g/shared.test.json"));
     }
 
+    /**
+     * The zone catalog lists the owner folder of a zone created in a personal owner folder.
+     */
     @Test
     void listShowsOwnerFolder() {
         String ownerCookie = login("scoped-owner", "scoped-owner");
@@ -159,6 +192,9 @@ class ScopedZoneCatalogApiTest {
                 .body("entries.find { it.zone == 'listed.test' }.ownerFolder", is(PERSONAL_OWNER));
     }
 
+    /**
+     * An operator who is not a group member cannot read the zone view for the group's zone.
+     */
     @Test
     void nonMemberCannotReadGroupZone() {
         String adminCookie = login("admin", "admin");
@@ -184,6 +220,9 @@ class ScopedZoneCatalogApiTest {
                 .statusCode(403);
     }
 
+    /**
+     * A group member can run a dry-run reconciliation for the group's zone catalog entry.
+     */
     @Test
     void memberCanReconcileGroupZoneEntry() throws Exception {
         Path keysDir = Path.of("target/test-keys");
@@ -224,6 +263,9 @@ class ScopedZoneCatalogApiTest {
                 .body("zoneOutcomes[0].zone", is("scoped-zones-group.g/reconcile.test"));
     }
 
+    /**
+     * A group member sees the group's zone in the zone catalog.
+     */
     @Test
     void groupMemberSeesGroupZoneInCatalog() {
         String adminCookie = login("admin", "admin");
@@ -251,6 +293,13 @@ class ScopedZoneCatalogApiTest {
                 .body("entries.zone", hasItem("visible.test"));
     }
 
+    /**
+     * Returns the named operator, creating it when it is missing.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the existing or newly created operator.
+     */
     private Operator ensureOperator(String username, String password) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -259,6 +308,13 @@ class ScopedZoneCatalogApiTest {
         return operator;
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

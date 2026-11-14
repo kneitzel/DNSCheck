@@ -19,18 +19,59 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Reconciles the zone catalog by loading each zone definition, transferring the live zone,
+ * detecting drift, and applying nsupdate unless the run is a dry-run.
+ */
 public final class DefaultReconciliationEngine implements ReconciliationEngine {
 
+    /**
+     * Records catalog load failures and per-zone reconciliation errors.
+     */
     private static final Logger log = LoggerFactory.getLogger(DefaultReconciliationEngine.class);
 
+    /**
+     * Zone catalog root scanned for owner folders and zone definitions.
+     */
     private final Path zonesDirectory;
+
+    /**
+     * Keys directory used to resolve the TSIG key file named by each zone definition.
+     */
     private final Path keysDirectory;
+
+    /**
+     * Loads zone definitions for a full run and for a single catalog entry.
+     */
     private final ZoneCatalog zoneCatalog;
+
+    /**
+     * Parses the TSIG key file before AXFR and nsupdate.
+     */
     private final BindKeyFileParser keyFileParser;
+
+    /**
+     * Loads the live zone by AXFR.
+     */
     private final LiveZoneClient liveZoneClient;
+
+    /**
+     * Plans the changes that would remove drift.
+     */
     private final DriftDetector driftDetector;
+
+    /**
+     * Applies planned changes when the run is not a dry-run.
+     */
     private final NsupdateClient nsupdateClient;
 
+    /**
+     * Creates an engine that reads zone definitions and key files from the given directories
+     * and uses the default catalog, parser, and DNS clients.
+     *
+     * @param zonesDirectory the zone catalog root.
+     * @param keysDirectory the keys directory.
+     */
     public DefaultReconciliationEngine(Path zonesDirectory, Path keysDirectory) {
         this(
                 zonesDirectory,
@@ -42,6 +83,17 @@ public final class DefaultReconciliationEngine implements ReconciliationEngine {
                 new NsupdateClient());
     }
 
+    /**
+     * Creates an engine that uses the supplied catalog, parser, and DNS clients.
+     *
+     * @param zonesDirectory the zone catalog root, kept for failure logs.
+     * @param keysDirectory the keys directory used to resolve TSIG key files.
+     * @param zoneCatalog the catalog that loads zone definitions.
+     * @param keyFileParser the parser for TSIG key files.
+     * @param liveZoneClient the client that loads a live zone.
+     * @param driftDetector the detector that plans drift corrections.
+     * @param nsupdateClient the client that applies planned changes.
+     */
     DefaultReconciliationEngine(
             Path zonesDirectory,
             Path keysDirectory,
@@ -59,6 +111,14 @@ public final class DefaultReconciliationEngine implements ReconciliationEngine {
         this.nsupdateClient = nsupdateClient;
     }
 
+    /**
+     * Reconciles every valid zone definition.
+     * A catalog load failure becomes one failed zone outcome and stops the run.
+     * A failure inside one zone is recorded on that zone, and the other zones still run.
+     *
+     * @param dryRun {@code true} to report drift without sending nsupdate commands.
+     * @return the zone outcomes for this run.
+     */
     @Override
     public ReconciliationRunResult reconcileAll(boolean dryRun) {
         List<ZoneReconciliationResult> zoneResults = new ArrayList<>();
@@ -73,6 +133,15 @@ public final class DefaultReconciliationEngine implements ReconciliationEngine {
         return new ReconciliationRunResult(zoneResults);
     }
 
+    /**
+     * Reconciles one zone catalog entry.
+     * A missing definition or an I/O failure becomes a failed zone outcome.
+     *
+     * @param ownerFolder the owner folder that contains the zone definition.
+     * @param zoneName the DNS zone name.
+     * @param dryRun {@code true} to report drift without sending nsupdate commands.
+     * @return the zone outcome for that catalog entry.
+     */
     @Override
     public ZoneReconciliationResult reconcileCatalogEntry(String ownerFolder, String zoneName, boolean dryRun) {
         CatalogEntryIdentity identity = CatalogEntryIdentity.of(ownerFolder, zoneName);
@@ -89,6 +158,16 @@ public final class DefaultReconciliationEngine implements ReconciliationEngine {
         }
     }
 
+    /**
+     * Loads the TSIG key, transfers the live zone, and either applies drift or reports it.
+     * Any failure is returned as a failed zone outcome rather than thrown to the caller.
+     *
+     * @param definition the zone definition to reconcile.
+     * @param dryRun {@code true} to report drift without sending nsupdate commands.
+     * @return the zone outcome for this zone definition.
+     * @throws IOException declared for callers. Failures from this method are caught and returned
+     *                     as a failed zone outcome.
+     */
     private ZoneReconciliationResult reconcileDefinition(ZoneDefinition definition, boolean dryRun)
             throws IOException {
         String catalogRef = catalogRefFor(definition);
@@ -114,6 +193,14 @@ public final class DefaultReconciliationEngine implements ReconciliationEngine {
         }
     }
 
+    /**
+     * Resolves the zone definition's key file.
+     * A path containing {@code /} is scoped under the keys directory; otherwise it is a file name in that directory.
+     *
+     * @param keyFile the key path stored in the zone definition.
+     * @return the key file path.
+     * @throws IllegalArgumentException when a scoped path is unsafe.
+     */
     private Path resolveKeyFile(String keyFile) {
         if (keyFile.contains("/")) {
             return ScopedStoragePaths.resolveKeyFile(keysDirectory, keyFile);
@@ -121,6 +208,13 @@ public final class DefaultReconciliationEngine implements ReconciliationEngine {
         return keysDirectory.resolve(keyFile);
     }
 
+    /**
+     * Builds the catalog reference from the zone definition file's owner folder and zone name.
+     * When the file has no parent directory, the zone name is used alone.
+     *
+     * @param definition the zone definition being reconciled.
+     * @return the catalog reference shown on the zone outcome.
+     */
     private static String catalogRefFor(ZoneDefinition definition) {
         Path zoneFile = definition.sourcePath();
         Path ownerDir = zoneFile.getParent();

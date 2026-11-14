@@ -7,14 +7,33 @@ import java.util.List;
  * The zone catalog open on the desk.
  * <p>
  * Directory fields are edited in the View and written through to this Model. {@code entries} is
- * the list the combo box watches after the View has loaded.
+ * the list the catalog table watches after the View has loaded.
  */
 public class CatalogSession {
 
+    /**
+     * The zone catalog directory shown in the View.
+     */
     private String zonesDirectory = "";
+
+    /**
+     * The keys directory shown in the View.
+     */
     private String keysDirectory = "";
+
+    /**
+     * The catalog entries the table watches.
+     */
     private List<CatalogEntryModel> entries = new ArrayList<>();
+
+    /**
+     * The catalog entry selected in the table, or {@code null} when none is selected.
+     */
     private CatalogEntryModel selected;
+
+    /**
+     * The outcome text shown under the catalog.
+     */
     private String outcome = "";
 
     /**
@@ -80,7 +99,7 @@ public class CatalogSession {
     }
 
     /**
-     * Returns the catalog entry chosen in the combo box.
+     * Returns the catalog entry chosen in the table.
      *
      * @return the selected entry, or {@code null} when none is selected
      */
@@ -89,7 +108,7 @@ public class CatalogSession {
     }
 
     /**
-     * Sets the catalog entry chosen in the combo box.
+     * Sets the catalog entry chosen in the table.
      *
      * @param selected the selected entry
      */

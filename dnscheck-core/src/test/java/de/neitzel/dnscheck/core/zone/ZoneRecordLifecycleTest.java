@@ -14,8 +14,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Tests promotion, demotion, modification, and deletion of managed records.
+ */
 class ZoneRecordLifecycleTest {
 
+    /**
+     * Promotion copies the ad-hoc live record into the zone definition and does not plan a DNS change.
+     */
     @Test
     void promoteCopiesLiveRecordIntoDefinition(@TempDir Path zonesDir) throws Exception {
         Path zoneFile = zonesDir.resolve("example.com.json");
@@ -36,6 +42,9 @@ class ZoneRecordLifecycleTest {
         assertTrue(Files.readString(zoneFile).contains("extra.example.com."));
     }
 
+    /**
+     * Demotion removes the managed record from the zone definition and does not plan a DNS change.
+     */
     @Test
     void demoteRemovesManagedRecordFromDefinition(@TempDir Path zonesDir) throws Exception {
         Path zoneFile = zonesDir.resolve("example.com.json");
@@ -62,6 +71,9 @@ class ZoneRecordLifecycleTest {
         assertTrue(!Files.readString(zoneFile).contains("192.0.2.10"));
     }
 
+    /**
+     * Deletion removes the managed record from the zone definition and plans one DNS change.
+     */
     @Test
     void deleteBuildsDeleteChangeAndRemovesManagedRecord(@TempDir Path zonesDir) throws Exception {
         Path zoneFile = zonesDir.resolve("example.com.json");
@@ -92,6 +104,9 @@ class ZoneRecordLifecycleTest {
         assertTrue(!Files.readString(zoneFile).contains("192.0.2.10"));
     }
 
+    /**
+     * Modification writes the new rdata into the zone definition and plans DNS changes for the live zone.
+     */
     @Test
     void modifyUpdatesManagedRecordAndBuildsRdataChange(@TempDir Path zonesDir) throws Exception {
         Path zoneFile = zonesDir.resolve("example.com.json");
@@ -122,6 +137,9 @@ class ZoneRecordLifecycleTest {
         assertTrue(Files.readString(zoneFile).contains("192.0.2.11"));
     }
 
+    /**
+     * Promotion of a record that is already a managed record is rejected.
+     */
     @Test
     void promoteRejectsAlreadyManagedRecord(@TempDir Path zonesDir) throws Exception {
         Path zoneFile = zonesDir.resolve("example.com.json");
@@ -149,6 +167,12 @@ class ZoneRecordLifecycleTest {
                 () -> lifecycle.promote(definition, liveZone, "mail", "A", "192.0.2.10", null));
     }
 
+    /**
+     * Writes a zone definition fixture whose managed records are supplied as JSON.
+     *
+     * @param zoneFile zone definition file to write.
+     * @param recordsJson JSON array of records for the zone definition.
+     */
     private static void writeZone(Path zoneFile, String recordsJson) throws Exception {
         Files.writeString(
                 zoneFile,

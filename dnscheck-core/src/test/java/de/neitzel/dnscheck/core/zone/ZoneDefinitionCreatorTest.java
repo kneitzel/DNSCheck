@@ -10,10 +10,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Tests creation of a zone definition in an owner folder.
+ */
 class ZoneDefinitionCreatorTest {
 
+    /**
+     * Owner folder used when creating zone definitions.
+     */
     private static final String OWNER = "admin.u";
 
+    /**
+     * Creating a zone writes a valid zone definition with the zone name, nameserver, key file, and an empty managed record list.
+     */
     @Test
     void createWritesEmptyZoneDefinition(@TempDir Path zonesDir) throws Exception {
         ZoneDefinitionCreator creator = new ZoneDefinitionCreator();
@@ -32,6 +41,9 @@ class ZoneDefinitionCreatorTest {
         assertTrue(json.contains("\"keyFile\""));
     }
 
+    /**
+     * Creating a zone definition that already exists in the owner folder is rejected.
+     */
     @Test
     void createRejectsDuplicateZone(@TempDir Path zonesDir) throws Exception {
         ZoneDefinitionCreator creator = new ZoneDefinitionCreator();

@@ -9,6 +9,9 @@ import de.neitzel.fx.view.Message;
  */
 public final class OutcomeText {
 
+    /**
+     * Prevents instantiation.
+     */
     private OutcomeText() {
     }
 

@@ -21,22 +21,52 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 
+/**
+ * Tests MFA enrollment, recovery codes, and sign-in after enrollment is active.
+ */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class AccountMfaApiTest {
 
+    /**
+     * Generator used to produce time-based codes for MFA enrollment and login.
+     */
     private static final MfaCodeService MFA_CODE_SERVICE = new MfaCodeService();
+        /**
+         * Username of the operator who enrolls in MFA.
+         */
         private static final String MFA_USERNAME = "mfa-user";
+        /**
+         * Password of the operator who enrolls in MFA.
+         */
         private static final String MFA_PASSWORD = "mfa-user";
 
+        /**
+         * Service used to create the operator when it is missing.
+         */
         @Inject
         OperatorAuthService operatorAuthService;
 
+    /**
+     * Session cookie from password login before MFA enrollment is active.
+     */
     private static String sessionCookie;
+        /**
+         * Session cookie from a login that included the second factor.
+         */
         private static String mfaSessionCookie;
+        /**
+         * Recovery code issued during MFA enrollment.
+         */
         private static String recoveryCode;
+    /**
+     * Pending MFA enrollment secret used to generate confirmation codes.
+     */
     private static String setupKey;
 
+        /**
+         * Creates the MFA operator when it does not already exist.
+         */
         @BeforeEach
         @Transactional
         void ensureOperatorExists() {
@@ -45,6 +75,9 @@ class AccountMfaApiTest {
         }
         }
 
+    /**
+     * Password login establishes a session before MFA enrollment.
+     */
     @Test
     @Order(1)
     void loginEstablishesSession() {
@@ -62,6 +95,9 @@ class AccountMfaApiTest {
         sessionCookie = response.detailedCookie(SessionService.COOKIE_NAME).getValue();
     }
 
+    /**
+     * Account security reports MFA disabled before enrollment starts.
+     */
     @Test
     @Order(2)
     void accountSecurityStartsDisabled() {
@@ -78,6 +114,9 @@ class AccountMfaApiTest {
                 "getAccountSecurity", Request.Method.GET, "/api/v1/account/security", response);
     }
 
+    /**
+     * Starting MFA enrollment returns a pending setup key and recovery codes.
+     */
     @Test
     @Order(3)
     void startEnrollmentReturnsPendingSetup() {
@@ -99,6 +138,9 @@ class AccountMfaApiTest {
                 "startAccountMfaEnrollment", Request.Method.POST, "/api/v1/account/security", response);
     }
 
+    /**
+     * Account security reports the pending MFA enrollment and its setup key.
+     */
     @Test
     @Order(4)
     void accountSecurityReportsPendingEnrollment() {
@@ -112,6 +154,9 @@ class AccountMfaApiTest {
                 .body("setupKey", is(setupKey));
     }
 
+    /**
+     * Confirming MFA enrollment with a current code makes the enrollment active.
+     */
     @Test
     @Order(5)
     void confirmEnrollmentActivatesMfa() {
@@ -132,6 +177,9 @@ class AccountMfaApiTest {
                 "confirmAccountMfaEnrollment", Request.Method.POST, "/api/v1/account/security/mfa/confirm", response);
     }
 
+    /**
+     * Account security reports that MFA enrollment is active after confirmation.
+     */
     @Test
     @Order(6)
     void accountSecurityReportsActiveEnrollment() {
@@ -144,6 +192,9 @@ class AccountMfaApiTest {
                 .body("mfaStatus", is("active"));
     }
 
+    /**
+     * A recovery code, including surrounding spaces and lower case, establishes a session after MFA enrollment is active.
+     */
     @Test
     @Order(7)
     void loginWithRecoveryCodeEstablishesSession() {
@@ -168,6 +219,9 @@ class AccountMfaApiTest {
         OpenApiContractSupport.assertResponseConforms("login", Request.Method.POST, "/api/v1/auth/login", response);
     }
 
+    /**
+     * A recovery code that has already been used is rejected.
+     */
     @Test
     @Order(8)
     void usedRecoveryCodeIsRejectedOnReuse() {
@@ -180,6 +234,9 @@ class AccountMfaApiTest {
                 .statusCode(401);
     }
 
+    /**
+     * Password-only login is rejected once MFA enrollment is active.
+     */
     @Test
     @Order(9)
     void loginWithoutMfaCodeIsRejectedAfterEnrollment() {
@@ -193,6 +250,9 @@ class AccountMfaApiTest {
                 .body("message", is("MFA code required"));
     }
 
+    /**
+     * Login with a wrong second factor is rejected once MFA enrollment is active.
+     */
     @Test
     @Order(10)
     void loginWithWrongMfaCodeIsRejectedAfterEnrollment() {
@@ -206,6 +266,9 @@ class AccountMfaApiTest {
                 .body("message", is("Invalid MFA code"));
     }
 
+    /**
+     * Login with a current second factor establishes a session after MFA enrollment is active.
+     */
     @Test
     @Order(11)
     void loginWithMfaCodeEstablishesSession() {
@@ -226,6 +289,9 @@ class AccountMfaApiTest {
         OpenApiContractSupport.assertResponseConforms("login", Request.Method.POST, "/api/v1/auth/login", response);
     }
 
+    /**
+     * A session created with the second factor can read reconciliation status.
+     */
     @Test
     @Order(12)
     void mfaSessionAccessesProtectedEndpoints() {

@@ -24,18 +24,36 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+/**
+ * Tests update and deletion of a zone definition.
+ */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ZoneCatalogMutateApiTest {
 
+    /**
+     * Owner folder of the operator who holds the zone-create global right.
+     */
     private static final String CREATOR_OWNER = "creator.u";
 
+    /**
+     * Service used to create fixture operators and grant the zone-create global right.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Session cookie for the operator who holds the zone-create global right.
+     */
     private static String creatorCookie;
+    /**
+     * Session cookie for an operator without write access to the zone.
+     */
     private static String readerCookie;
 
+    /**
+     * Creates the creator, grants that operator the zone-create global right, and creates a reader.
+     */
     @Test
     @Order(0)
     @Transactional
@@ -49,6 +67,9 @@ class ZoneCatalogMutateApiTest {
         ensureOperator("reader", "reader");
     }
 
+    /**
+     * The creator can create a zone definition and receives a created response.
+     */
     @Test
     @Order(1)
     void createReturns201() {
@@ -70,6 +91,9 @@ class ZoneCatalogMutateApiTest {
                 .body("nameserver", is("ns1.mutate.test"));
     }
 
+    /**
+     * The creator can change the nameserver stored on that zone definition.
+     */
     @Test
     @Order(2)
     void creatorCanPatchNameserver() {
@@ -86,6 +110,9 @@ class ZoneCatalogMutateApiTest {
                 .body("nameserver", is("ns2.mutate.test"));
     }
 
+    /**
+     * An operator without write access cannot change the zone definition.
+     */
     @Test
     @Order(3)
     void readerCannotPatchZoneDefinition() {
@@ -100,6 +127,9 @@ class ZoneCatalogMutateApiTest {
                 .statusCode(403);
     }
 
+    /**
+     * Updating a zone definition that is not in the owner folder returns not found.
+     */
     @Test
     @Order(4)
     void patchMissingZoneReturns404() {
@@ -113,6 +143,9 @@ class ZoneCatalogMutateApiTest {
                 .statusCode(404);
     }
 
+    /**
+     * An operator without write access cannot delete the zone definition.
+     */
     @Test
     @Order(5)
     void readerCannotDeleteZoneDefinition() {
@@ -124,6 +157,9 @@ class ZoneCatalogMutateApiTest {
                 .statusCode(403);
     }
 
+    /**
+     * The creator can delete the zone definition, and an admin no longer sees it in the zone catalog.
+     */
     @Test
     @Order(6)
     void creatorCanDeleteZoneDefinition() throws Exception {
@@ -146,6 +182,13 @@ class ZoneCatalogMutateApiTest {
                 .body("entries.zone", not(hasItem("mutate.test")));
     }
 
+    /**
+     * Returns the named operator, creating it when it is missing.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the existing or newly created operator.
+     */
     private Operator ensureOperator(String username, String password) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -154,6 +197,13 @@ class ZoneCatalogMutateApiTest {
         return operator;
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

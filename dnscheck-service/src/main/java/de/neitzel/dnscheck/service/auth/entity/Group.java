@@ -12,13 +12,24 @@ import jakarta.persistence.Table;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * Named group of operators. Members inherit the group's global rights and supplemental zone grants.
+ * Rows are stored in {@code operator_groups} and identified by the generated Panache identifier.
+ */
 @Entity
 @Table(name = "operator_groups")
 public class Group extends PanacheEntity {
 
+    /**
+     * Unique group name. The column is not null. The name is the identifier of this group's owner folder.
+     */
     @Column(nullable = false, unique = true)
     public String name;
 
+    /**
+     * Operators that belong to this group. Membership is stored in {@code operator_group_memberships} and loaded
+     * lazily.
+     */
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "operator_group_memberships",
@@ -26,6 +37,12 @@ public class Group extends PanacheEntity {
             inverseJoinColumns = @JoinColumn(name = "operator_id"))
     public Set<Operator> members = new HashSet<>();
 
+    /**
+     * Loads a group by its unique name.
+     *
+     * @param name Group name to find.
+     * @return The matching group, or null when no group has that name.
+     */
     public static Group findByName(String name) {
         return find("name", name).firstResult();
     }

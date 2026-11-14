@@ -3,16 +3,43 @@ package de.neitzel.dnscheck.fx.model;
 import de.neitzel.dnscheck.core.zone.ZoneCatalogEntry;
 
 /**
- * One zone catalog entry shown in the combo box.
+ * One zone catalog entry shown in the catalog table.
  */
 public class CatalogEntryModel {
 
+    /**
+     * The owner folder that holds the zone file.
+     */
     private String ownerFolder = "";
+
+    /**
+     * The zone name, which is the file name.
+     */
     private String zone = "";
+
+    /**
+     * The nameserver the catalog entry names.
+     */
     private String nameserver = "";
+
+    /**
+     * The key file the catalog entry names.
+     */
     private String keyFile = "";
+
+    /**
+     * Whether the zone file loaded. An invalid file stays in the list with {@link #error}.
+     */
     private boolean valid;
+
+    /**
+     * The load error, or an empty string when the entry is valid.
+     */
     private String error = "";
+
+    /**
+     * {@code owner/zoneName}, used in notices.
+     */
     private String catalogRef = "";
 
     /**
@@ -166,7 +193,7 @@ public class CatalogEntryModel {
     }
 
     /**
-     * Returns the catalog ref, for a combo box row.
+     * Returns {@code owner/zoneName}.
      *
      * @return the catalog ref
      */
@@ -175,6 +202,12 @@ public class CatalogEntryModel {
         return catalogRef;
     }
 
+    /**
+     * Returns the value, or an empty string when it is null.
+     *
+     * @param value the value
+     * @return the value, or {@code ""}
+     */
     private static String text(String value) {
         return value == null ? "" : value;
     }

@@ -17,20 +17,48 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 
+/**
+ * Applies planned changes to a live zone with one authenticated dynamic update.
+ */
 public final class NsupdateClient {
 
+    /**
+     * How long a single nsupdate exchange may take before it is abandoned.
+     */
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(30);
 
+    /**
+     * Converts owner names and the zone name into dnsjava names.
+     */
     private final ZoneNameNormalizer nameNormalizer;
 
+    /**
+     * Creates a client that uses a new zone name normalizer.
+     */
     public NsupdateClient() {
         this(new ZoneNameNormalizer());
     }
 
+    /**
+     * Creates a client that uses the supplied zone name normalizer.
+     *
+     * @param nameNormalizer the normalizer used for the zone name and record owner names.
+     */
     NsupdateClient(ZoneNameNormalizer nameNormalizer) {
         this.nameNormalizer = nameNormalizer;
     }
 
+    /**
+     * Sends every planned change in one update to the nameserver.
+     * An empty change list does nothing. The update uses TCP and the TSIG key.
+     *
+     * @param zone the DNS zone to update.
+     * @param nameserver the authoritative nameserver to contact.
+     * @param tsigKey the TSIG key used to authenticate the update.
+     * @param changes the planned changes for this zone, in the order they should be applied.
+     * @throws IOException when the nameserver cannot be reached or the response rcode is not {@code NOERROR}.
+     * @throws IllegalArgumentException when a change uses an unsupported record type or invalid rdata.
+     */
     public void apply(String zone, String nameserver, TsigKey tsigKey, List<PlannedChange> changes)
             throws IOException {
         if (changes.isEmpty()) {
@@ -55,6 +83,17 @@ public final class NsupdateClient {
         }
     }
 
+    /**
+     * Appends one planned change to the update.
+     * An update deletes the current rdata and adds it again with the planned TTL.
+     * A delete removes that rdata.
+     *
+     * @param update the dynamic update being built for the zone.
+     * @param change the planned change to append.
+     * @throws IOException when the replacement record cannot be built.
+     * @throws IllegalArgumentException when the record type is not supported or the rdata is invalid.
+     * @throws IllegalStateException when the action is not add, update, or delete.
+     */
     private void applyChange(Update update, PlannedChange change) throws IOException {
         Name owner = nameNormalizer.toDnsName(change.nameFqdn());
         int type = Type.value(change.type(), true);
@@ -73,6 +112,18 @@ public final class NsupdateClient {
         }
     }
 
+    /**
+     * Builds an IN-class record for an add or update.
+     * A missing TTL falls back to 3600 seconds.
+     *
+     * @param owner the absolute owner name.
+     * @param type the dnsjava record type code.
+     * @param ttl the TTL in seconds, or {@code null} to use the fallback.
+     * @param rdata the record data.
+     * @return the record to add.
+     * @throws IOException when the record cannot be parsed for a reason other than rdata syntax.
+     * @throws IllegalArgumentException when {@code rdata} is not valid for the record type.
+     */
     private static Record createRecord(Name owner, int type, Long ttl, String rdata) throws IOException {
         long recordTtl = ttl != null ? ttl : 3600L;
         try {
@@ -82,6 +133,12 @@ public final class NsupdateClient {
         }
     }
 
+    /**
+     * Appends a trailing dot so the zone name is absolute for the update.
+     *
+     * @param zone the zone name.
+     * @return the zone name with exactly one trailing dot.
+     */
     private static String ensureTrailingDot(String zone) {
         return zone.endsWith(".") ? zone : zone + ".";
     }

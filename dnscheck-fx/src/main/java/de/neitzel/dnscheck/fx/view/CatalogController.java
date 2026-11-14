@@ -28,11 +28,29 @@ import java.util.List;
 @Singleton
 public class CatalogController implements HasViewModel {
 
+    /**
+     * The desk that holds the catalog Model and the open zone.
+     */
     private final Desk desk;
+
+    /**
+     * Catalog access: load, save, and reconcile zone files.
+     */
     private final ZoneFiles zoneFiles;
+
+    /**
+     * The catalog ViewModel, set before the bindings run.
+     */
     private ViewModel viewModel;
+
+    /**
+     * Whether a reconciliation run is already going.
+     */
     private boolean busy;
 
+    /**
+     * The pane that holds the open zone View, or a prompt when none is open.
+     */
     @FXML
     private VBox editorHost;
 
@@ -120,6 +138,11 @@ public class CatalogController implements HasViewModel {
         run(false);
     }
 
+    /**
+     * Dry-runs or reconciles the selected catalog entry from the file on disk.
+     *
+     * @param dryRun {@code true} to report drift without sending {@code nsupdate}
+     */
     private void run(boolean dryRun) {
         CatalogEntryModel selected = desk.catalog().getSelected();
         if (selected == null || !selected.isValid()) {
@@ -139,6 +162,16 @@ public class CatalogController implements HasViewModel {
         Thread.startVirtualThread(() -> finish(reconcile(zones, keys, owner, zone, dryRun)));
     }
 
+    /**
+     * Reconciles one catalog entry, turning a failure into a failed zone outcome.
+     *
+     * @param zones   the zone catalog directory
+     * @param keys    the keys directory
+     * @param owner   the owner folder
+     * @param zone    the zone name
+     * @param dryRun  {@code true} to report drift without sending {@code nsupdate}
+     * @return the zone outcome
+     */
     private ZoneReconciliationResult reconcile(
             Path zones, Path keys, String owner, String zone, boolean dryRun) {
         try {
@@ -148,6 +181,11 @@ public class CatalogController implements HasViewModel {
         }
     }
 
+    /**
+     * Writes the zone outcome onto the catalog View on the JavaFX thread.
+     *
+     * @param result the zone outcome
+     */
     private void finish(ZoneReconciliationResult result) {
         Platform.runLater(() -> {
             busy = false;
@@ -155,6 +193,9 @@ public class CatalogController implements HasViewModel {
         });
     }
 
+    /**
+     * Writes a short description of the selected catalog entry into the outcome text.
+     */
     private void describeSelection() {
         CatalogEntryModel selected = desk.catalog().getSelected();
         if (selected == null) {
@@ -169,16 +210,34 @@ public class CatalogController implements HasViewModel {
                 + "  key file " + selected.getKeyFile());
     }
 
+    /**
+     * Returns the catalog entries the table watches.
+     *
+     * @return the entries
+     */
     @SuppressWarnings("unchecked")
     private List<CatalogEntryModel> entries() {
         return (List<CatalogEntryModel>) viewModel.property("entries").getValue();
     }
 
+    /**
+     * Records a Message and the same text as the outcome.
+     *
+     * @param severity how serious the notice is
+     * @param text     the notice text
+     * @param source   where the notice came from
+     */
     private void note(Message.Severity severity, String text, String source) {
         viewModel.addMessage(new Message(severity, text, source));
         Attributes.set(viewModel, "outcome", text);
     }
 
+    /**
+     * Writes a zone outcome onto a ViewModel as text and as a Message.
+     *
+     * @param target the ViewModel that shows the outcome
+     * @param result the zone outcome
+     */
     private static void show(ViewModel target, ZoneReconciliationResult result) {
         Attributes.set(target, "outcome", OutcomeText.of(result));
         target.addMessage(new Message(
@@ -187,6 +246,12 @@ public class CatalogController implements HasViewModel {
                 "reconcile"));
     }
 
+    /**
+     * Returns the exception message, or a fallback when it is missing.
+     *
+     * @param failure the failure
+     * @return the text
+     */
     private static String text(Exception failure) {
         String message = failure.getMessage();
         if (message == null || message.isBlank()) {

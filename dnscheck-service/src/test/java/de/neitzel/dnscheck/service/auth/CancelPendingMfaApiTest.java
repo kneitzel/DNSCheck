@@ -22,20 +22,44 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 
+/**
+ * Tests an operator cancelling a pending MFA enrollment.
+ */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class CancelPendingMfaApiTest {
 
+    /**
+     * Username of the operator who cancels MFA enrollment.
+     */
     private static final String USERNAME = "cancel-mfa-user";
+    /**
+     * Password of the operator who cancels MFA enrollment.
+     */
     private static final String PASSWORD = "cancel-mfa-user";
+    /**
+     * Generator used to produce the confirmation code that activates MFA enrollment.
+     */
     private static final MfaCodeService MFA_CODE_SERVICE = new MfaCodeService();
 
+    /**
+     * Service used to create the operator when it is missing.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Session cookie for the operator under test.
+     */
     private static String sessionCookie;
+    /**
+     * Pending MFA enrollment secret captured when enrollment is started again.
+     */
     private static String setupKey;
 
+    /**
+     * Creates the operator when it does not already exist.
+     */
     @BeforeEach
     @Transactional
     void ensureOperatorExists() {
@@ -44,6 +68,9 @@ class CancelPendingMfaApiTest {
         }
     }
 
+    /**
+     * Login with the operator password establishes a session before MFA enrollment.
+     */
     @Test
     @Order(1)
     void loginEstablishesSession() {
@@ -60,6 +87,9 @@ class CancelPendingMfaApiTest {
         sessionCookie = response.detailedCookie(SessionService.COOKIE_NAME).getValue();
     }
 
+    /**
+     * Cancelling MFA enrollment while it is disabled is rejected, and the status stays disabled.
+     */
     @Test
     @Order(2)
     void cancelWhileDisabledIsRejected() {
@@ -79,6 +109,9 @@ class CancelPendingMfaApiTest {
                 .body("mfaStatus", is("disabled"));
     }
 
+    /**
+     * Starting MFA enrollment and then cancelling it returns the operator to disabled and clears the pending setup.
+     */
     @Test
     @Order(3)
     void startEnrollmentThenCancelReturnsDisabled() {
@@ -116,6 +149,9 @@ class CancelPendingMfaApiTest {
                 .body("setupKey", nullValue());
     }
 
+    /**
+     * After a cancelled MFA enrollment, the operator can start enrollment again and receive recovery codes.
+     */
     @Test
     @Order(4)
     void afterCancelEnrollmentCanStartAgain() {
@@ -133,6 +169,9 @@ class CancelPendingMfaApiTest {
         setupKey = response.jsonPath().getString("setupKey");
     }
 
+    /**
+     * Cancelling MFA enrollment after it is active is rejected, and the status stays active.
+     */
     @Test
     @Order(5)
     void cancelWhileActiveIsRejected() {

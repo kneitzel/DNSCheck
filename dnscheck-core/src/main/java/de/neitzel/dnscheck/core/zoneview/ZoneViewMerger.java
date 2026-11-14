@@ -13,8 +13,23 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+/**
+ * Builds a zone view by classifying each managed record against the live zone, then appending
+ * deletion matches and ad-hoc records.
+ */
 public final class ZoneViewMerger {
 
+    /**
+     * Merges the zone definition with the live zone.
+     * Managed records are classified first and claim an exact live match so it is not also shown as ad-hoc.
+     * A live record with the same name and type but different rdata is drift and stays unclaimed, so it can
+     * still appear as ad-hoc. Live records that match a deletion marker are marked for deletion.
+     * Rows are ordered by owner name, type, and rdata.
+     *
+     * @param definition the zone definition that holds managed records and deletion markers.
+     * @param liveZone the live zone retrieved by AXFR.
+     * @return the zone view for that zone.
+     */
     public ZoneView merge(ZoneDefinition definition, LiveZone liveZone) {
         List<ZoneViewRecord> records = new ArrayList<>();
         Set<String> claimedLiveKeys = new HashSet<>();
@@ -46,6 +61,16 @@ public final class ZoneViewMerger {
         return new ZoneView(definition.zone(), liveZone.defaultTtl(), List.copyOf(records));
     }
 
+    /**
+     * Classifies one managed record as enforced, drifted, or missing, and claims the matching live record
+     * when the rdata matches. A TTL difference is drift only when the TTL policy enforces a value.
+     *
+     * @param spec the managed record to classify.
+     * @param liveZone the live zone retrieved by AXFR.
+     * @param claimedLiveKeys live-record keys already represented by an enforced or TTL-drifted row.
+     *                        An exact match is added to this set.
+     * @return the zone view row for the managed record.
+     */
     private ZoneViewRecord classifyManaged(RecordSpec spec, LiveZone liveZone, Set<String> claimedLiveKeys) {
         long desiredTtl = spec.ttlPolicy().resolveSeconds(liveZone.defaultTtl());
         List<DnsRecord> sameNameAndType = liveZone.records().stream()
@@ -85,6 +110,13 @@ public final class ZoneViewMerger {
                 desiredTtl);
     }
 
+    /**
+     * Reports whether any deletion marker matches the live record's owner, type, and rdata.
+     *
+     * @param liveRecord the live record to test.
+     * @param definition the zone definition that holds the deletion markers.
+     * @return {@code true} when a deletion marker matches.
+     */
     private static boolean matchesDeletionMarker(DnsRecord liveRecord, ZoneDefinition definition) {
         for (RecordSpec marker : definition.deletionMarkers()) {
             if (!sameNameAndType(liveRecord, marker)) {
@@ -97,6 +129,13 @@ public final class ZoneViewMerger {
         return false;
     }
 
+    /**
+     * Compares owner name and record type without case.
+     *
+     * @param record the live record.
+     * @param spec the managed record or deletion marker.
+     * @return {@code true} when the owner name and type match.
+     */
     private static boolean sameNameAndType(DnsRecord record, RecordSpec spec) {
         return record.nameFqdn().equalsIgnoreCase(spec.nameFqdn())
                 && record.type().equalsIgnoreCase(spec.type());

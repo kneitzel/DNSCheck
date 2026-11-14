@@ -30,23 +30,47 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests modification of an ad-hoc record without changing enforcement.
+ */
 @QuarkusTest
 class AdHocRecordModifyApiTest {
 
+    /**
+     * Owner folder that holds the zone under test.
+     */
     private static final String OWNER = "adhoc-edit.u";
+    /**
+     * Zone name of the catalog entry under test.
+     */
     private static final String ZONE = "adhoc.example";
 
+    /**
+     * Mock live zone loader that merges the mutable live records with managed records.
+     */
     @InjectMock
     LiveZoneLoader liveZoneLoader;
 
+    /**
+     * Mock updater that applies add, delete, and update changes to the live record fixture.
+     */
     @InjectMock
     DnsUpdater dnsUpdater;
 
+    /**
+     * Service used to create the writer and reader operators.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Mutable live zone records for the ad-hoc record and the managed record.
+     */
     private final CopyOnWriteArrayList<DnsRecord> liveRecords = new CopyOnWriteArrayList<>();
 
+    /**
+     * Stubs live zone loading and applies planned changes to the live record fixture.
+     */
     @BeforeEach
     void stubLiveAndDns() throws Exception {
         when(liveZoneLoader.load(any(ZoneDefinition.class), any(Path.class)))
@@ -85,6 +109,9 @@ class AdHocRecordModifyApiTest {
         }).when(dnsUpdater).apply(any(ZoneDefinition.class), any(Path.class), any());
     }
 
+    /**
+     * Seeds an ad-hoc record and a managed record, writes the zone definition and TSIG key, and creates the operators.
+     */
     @BeforeEach
     @Transactional
     void seed() throws Exception {
@@ -126,6 +153,9 @@ class AdHocRecordModifyApiTest {
         ensureOperator("adhoc-reader", "adhoc-reader");
     }
 
+    /**
+     * The zone owner can change an ad-hoc record's rdata, and the zone definition stays free of that record.
+     */
     @Test
     void writerCanModifyAdHocRecordWithoutUpdatingDefinition() throws Exception {
         String cookie = login("adhoc-edit", "adhoc-edit");
@@ -154,6 +184,9 @@ class AdHocRecordModifyApiTest {
         assertFalse(json.contains("192.0.2.51"));
     }
 
+    /**
+     * The zone owner can change only the TTL of an ad-hoc record, and the record stays ad-hoc.
+     */
     @Test
     void writerCanChangeAdHocTtlOnly() {
         String cookie = login("adhoc-edit", "adhoc-edit");
@@ -178,6 +211,9 @@ class AdHocRecordModifyApiTest {
                         is(600));
     }
 
+    /**
+     * Changing a managed record's rdata writes the new rdata into the zone definition.
+     */
     @Test
     void managedModifyStillUpdatesDefinition() throws Exception {
         String cookie = login("adhoc-edit", "adhoc-edit");
@@ -202,6 +238,9 @@ class AdHocRecordModifyApiTest {
         org.junit.jupiter.api.Assertions.assertTrue(json.contains("192.0.2.11"));
     }
 
+    /**
+     * An operator without the write zone right cannot modify an ad-hoc record.
+     */
     @Test
     void readerCannotModifyAdHocRecord() {
         String cookie = login("adhoc-reader", "adhoc-reader");
@@ -220,12 +259,26 @@ class AdHocRecordModifyApiTest {
                 .statusCode(403);
     }
 
+    /**
+     * Returns whether a live record has the same name, type, and rdata as a planned change.
+     *
+     * @param change planned change to match.
+     * @param record live record to compare.
+     * @return true when the name, type, and rdata match.
+     */
     private static boolean matches(PlannedChange change, DnsRecord record) {
         return record.nameFqdn().equalsIgnoreCase(change.nameFqdn())
                 && record.type().equalsIgnoreCase(change.type())
                 && Objects.equals(record.rdata(), change.rdata());
     }
 
+    /**
+     * Returns the named operator, creating it when it is missing.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the existing or newly created operator.
+     */
     private Operator ensureOperator(String username, String password) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -234,6 +287,13 @@ class AdHocRecordModifyApiTest {
         return operator;
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

@@ -38,26 +38,53 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests promotion, demotion, modification, and deletion of zone records.
+ */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ZoneRecordLifecycleApiTest {
 
+    /**
+     * Owner folder of the operator who may change records.
+     */
     private static final String WRITER_OWNER = "writer.u";
 
+    /**
+     * Mock live zone loader that merges the mutable live records with managed records.
+     */
     @InjectMock
     LiveZoneLoader liveZoneLoader;
 
+    /**
+     * Mock updater that applies add, delete, and update changes to the live record fixture.
+     */
     @InjectMock
     DnsUpdater dnsUpdater;
 
+    /**
+     * Service used to create the writer and reader operators.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Mutable live zone records shared by the loader and the updater stub.
+     */
     private static final CopyOnWriteArrayList<DnsRecord> LIVE_RECORDS = new CopyOnWriteArrayList<>();
 
+    /**
+     * Session cookie for the operator who owns the zone.
+     */
     private static String writerCookie;
+    /**
+     * Session cookie for an operator without the write zone right.
+     */
     private static String readerCookie;
 
+    /**
+     * Stubs live zone loading and applies planned changes to the live record fixture.
+     */
     @BeforeEach
     void stubLiveZoneAndDnsUpdater() throws Exception {
         when(liveZoneLoader.load(any(ZoneDefinition.class), any(Path.class)))
@@ -92,6 +119,9 @@ class ZoneRecordLifecycleApiTest {
         }).when(dnsUpdater).apply(any(ZoneDefinition.class), any(Path.class), any());
     }
 
+    /**
+     * Seeds a managed record and an ad-hoc record, writes the zone definition and TSIG key, and creates the operators.
+     */
     @Test
     @Order(0)
     @Transactional
@@ -135,6 +165,9 @@ class ZoneRecordLifecycleApiTest {
         ensureOperator("reader", "reader");
     }
 
+    /**
+     * An operator without the write zone right cannot promote a record.
+     */
     @Test
     @Order(1)
     void readerCannotPromoteRecords() {
@@ -152,6 +185,9 @@ class ZoneRecordLifecycleApiTest {
                 .statusCode(403);
     }
 
+    /**
+     * Promotion adds the ad-hoc record to the zone definition, and the zone view shows it as enforced.
+     */
     @Test
     @Order(2)
     void promoteAddsAdHocRecordToDefinition() throws Exception {
@@ -178,6 +214,9 @@ class ZoneRecordLifecycleApiTest {
         assert Files.readString(Path.of("target/test-zones/writer.u/example.com.json")).contains("extra.example.com.");
     }
 
+    /**
+     * Demotion removes the managed record from the zone definition, and the zone view shows the live record as ad-hoc.
+     */
     @Test
     @Order(3)
     void demoteRemovesManagedRecordButKeepsLiveRecord() throws Exception {
@@ -197,6 +236,9 @@ class ZoneRecordLifecycleApiTest {
         assert !Files.readString(Path.of("target/test-zones/writer.u/example.com.json")).contains("\"rdata\": \"192.0.2.10\"");
     }
 
+    /**
+     * Modification writes the new rdata into the zone definition and shows it in the zone view.
+     */
     @Test
     @Order(4)
     void modifyUpdatesManagedRecordInDefinitionAndLiveZone() throws Exception {
@@ -219,6 +261,9 @@ class ZoneRecordLifecycleApiTest {
         assert Files.readString(Path.of("target/test-zones/writer.u/example.com.json")).contains("192.0.2.100");
     }
 
+    /**
+     * Deletion removes the record from the live zone and from the zone definition.
+     */
     @Test
     @Order(5)
     void deleteRemovesRecordFromLiveZoneAndDefinition() throws Exception {
@@ -239,12 +284,26 @@ class ZoneRecordLifecycleApiTest {
         assert LIVE_RECORDS.stream().noneMatch(record -> record.nameFqdn().equals("extra.example.com."));
     }
 
+    /**
+     * Returns whether a live record has the same name, type, and rdata as a planned change.
+     *
+     * @param change planned change to match.
+     * @param record live record to compare.
+     * @return true when the name, type, and rdata match.
+     */
     private static boolean matches(PlannedChange change, DnsRecord record) {
         return record.nameFqdn().equalsIgnoreCase(change.nameFqdn())
                 && record.type().equalsIgnoreCase(change.type())
                 && Objects.equals(record.rdata(), change.rdata());
     }
 
+    /**
+     * Returns the named operator, creating it when it is missing.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the existing or newly created operator.
+     */
     private Operator ensureOperator(String username, String password) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -253,6 +312,13 @@ class ZoneRecordLifecycleApiTest {
         return operator;
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

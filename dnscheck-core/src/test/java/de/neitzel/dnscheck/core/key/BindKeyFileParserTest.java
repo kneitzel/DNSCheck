@@ -8,8 +8,14 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/**
+ * Tests parsing of a BIND key file into a TSIG key.
+ */
 class BindKeyFileParserTest {
 
+    /**
+     * A BIND native key file yields the TSIG key name, algorithm, and secret.
+     */
     @Test
     void parsesBindNativeKeyFile(@TempDir Path tempDir) throws Exception {
         Path keyFile = tempDir.resolve("example.com.key");

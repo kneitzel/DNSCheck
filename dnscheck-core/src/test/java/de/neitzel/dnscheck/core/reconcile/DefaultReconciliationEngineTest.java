@@ -22,8 +22,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests reconciliation of one zone catalog entry.
+ */
 class DefaultReconciliationEngineTest {
 
+    /**
+     * A dry-run reconciliation reports drift for a missing managed record and does not send nsupdate.
+     */
     @Test
     void dryRunDoesNotApplyUpdates(@TempDir Path tempDir) throws Exception {
         Path zonesDir = tempDir.resolve("zones");

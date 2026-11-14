@@ -11,13 +11,20 @@ import javafx.scene.layout.HBox;
 /**
  * One row of a zone definition.
  * <p>
- * The class is the root and the Controller of {@code RecordForm.fxml}. Repeat creates one
- * instance per record.
+ * The class is the root and the Controller of {@code RecordForm.fxml}. The table creates one
+ * instance per record. The fields follow the columns; Remove sits after them.
  */
 @Singleton
 public class RecordForm extends HBox {
 
+    /**
+     * The desk that holds the open zone, so a row can remove its record.
+     */
     private final Desk desk;
+
+    /**
+     * The record this row edits. The table sets it once, and the row's bindings run then.
+     */
     private final ObjectProperty<Object> model = new SimpleObjectProperty<>(this, "model");
 
     /**
@@ -31,7 +38,7 @@ public class RecordForm extends HBox {
     }
 
     /**
-     * Returns the model property Repeat sets.
+     * Returns the model property the table sets.
      *
      * @return the model property
      */

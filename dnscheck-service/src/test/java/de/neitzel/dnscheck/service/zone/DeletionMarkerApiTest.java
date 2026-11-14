@@ -28,21 +28,42 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests deletion markers on a zone catalog entry.
+ */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class DeletionMarkerApiTest {
 
+    /**
+     * Owner folder of the operator who may edit deletion markers.
+     */
     private static final String WRITER_OWNER = "marker-writer.u";
 
+    /**
+     * Mock live zone loader that returns an ad-hoc record and a record the deletion marker can match.
+     */
     @InjectMock
     LiveZoneLoader liveZoneLoader;
 
+    /**
+     * Service used to create the fixture operators.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Session cookie for the operator who owns the zone.
+     */
     private static String writerCookie;
+    /**
+     * Session cookie for an operator who does not own the zone.
+     */
     private static String readerCookie;
 
+    /**
+     * Stubs the live zone with an ad-hoc address and a TXT record that a deletion marker can match.
+     */
     @BeforeEach
     void stubLiveZone() throws Exception {
         when(liveZoneLoader.load(any(ZoneDefinition.class), any(Path.class)))
@@ -57,6 +78,9 @@ class DeletionMarkerApiTest {
                 });
     }
 
+    /**
+     * Writes the zone definition and TSIG key, and creates the writer and reader operators.
+     */
     @Test
     @Order(0)
     @Transactional
@@ -89,6 +113,9 @@ class DeletionMarkerApiTest {
         ensureOperator("marker-reader", "marker-reader");
     }
 
+    /**
+     * The zone owner can add a deletion marker, the zone view marks the matching live record, and the marker is stored in the zone definition.
+     */
     @Test
     @Order(1)
     void writerCanAddDeletionMarkerAndViewMarkedRecord() throws Exception {
@@ -108,6 +135,9 @@ class DeletionMarkerApiTest {
         org.junit.jupiter.api.Assertions.assertTrue(json.contains("\"delete\""));
     }
 
+    /**
+     * An operator without the write zone right cannot add a deletion marker.
+     */
     @Test
     @Order(2)
     void readerCannotAddDeletionMarker() {
@@ -122,6 +152,9 @@ class DeletionMarkerApiTest {
                 .statusCode(403);
     }
 
+    /**
+     * The zone owner can remove a deletion marker from the zone definition.
+     */
     @Test
     @Order(3)
     void writerCanRemoveDeletionMarker() throws Exception {
@@ -138,6 +171,13 @@ class DeletionMarkerApiTest {
         org.junit.jupiter.api.Assertions.assertFalse(json.contains("*remove*"));
     }
 
+    /**
+     * Returns the named operator, creating it when it is missing.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the existing or newly created operator.
+     */
     private Operator ensureOperator(String username, String password) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -146,6 +186,13 @@ class DeletionMarkerApiTest {
         return operator;
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

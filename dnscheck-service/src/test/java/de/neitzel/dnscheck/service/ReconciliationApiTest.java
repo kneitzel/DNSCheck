@@ -28,17 +28,35 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 
+/**
+ * Tests reconciliation status and the global reconciliation endpoint.
+ */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ReconciliationApiTest {
 
+    /**
+     * Session cookie for the admin operator.
+     */
     private static String adminCookie;
+    /**
+     * Session cookie for an operator who is not an admin.
+     */
     private static String writerCookie;
+    /**
+     * Session cookie for the operator who owns one zone catalog entry.
+     */
     private static String readerCookie;
 
+    /**
+     * Service used to create the fixture operators.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Seeds zone definitions in two owner folders and logs in as the admin operator.
+     */
     @Test
     @Order(0)
     @Transactional
@@ -49,6 +67,9 @@ class ReconciliationApiTest {
         ensureOperator("reconcile-reader");
     }
 
+    /**
+     * The health endpoint reports that the service is up.
+     */
     @Test
     @Order(1)
     void healthEndpointReturnsUp() {
@@ -62,6 +83,9 @@ class ReconciliationApiTest {
         OpenApiContractSupport.assertResponseConforms("getHealth", Request.Method.GET, "/api/v1/health", response);
     }
 
+    /**
+     * Reconciliation status is never run before a reconciliation run and includes the zone catalog location.
+     */
     @Test
     @Order(2)
     void statusEndpointReturnsNeverRunInitially() {
@@ -79,6 +103,9 @@ class ReconciliationApiTest {
                 "getReconciliationStatus", Request.Method.GET, "/api/v1/status", response);
     }
 
+    /**
+     * An explicit dry-run reconciliation run reports dry-run and returns zone outcomes.
+     */
     @Test
     @Order(3)
     void reconcileEndpointRunsDryRun() {
@@ -97,6 +124,9 @@ class ReconciliationApiTest {
                 "triggerReconciliation", Request.Method.POST, "/api/v1/reconcile", response);
     }
 
+    /**
+     * A reconciliation run that omits the dry-run flag uses the configured dry-run default.
+     */
     @Test
     @Order(4)
     void omittedDryRunUsesConfiguredDefault() {
@@ -109,6 +139,9 @@ class ReconciliationApiTest {
                 .body("dryRun", is(true));
     }
 
+    /**
+     * An operator who is not an admin cannot trigger a global reconciliation run.
+     */
     @Test
     @Order(5)
     void nonAdminCannotTriggerGlobalReconcile() {
@@ -121,6 +154,9 @@ class ReconciliationApiTest {
                 .statusCode(403);
     }
 
+    /**
+     * Reconciliation status for a reader includes only the zone outcome for that operator's owner folder.
+     */
     @Test
     @Order(6)
     void statusFiltersZoneOutcomesForReader() {
@@ -135,6 +171,9 @@ class ReconciliationApiTest {
                 .body("zoneOutcomes[0].zone", is("reconcile-reader.u/example.com"));
     }
 
+    /**
+     * A reader does not see a zone outcome for a zone catalog entry the operator does not own.
+     */
     @Test
     @Order(7)
     void readerDoesNotSeeUngrantedZoneOutcomes() {
@@ -147,6 +186,9 @@ class ReconciliationApiTest {
                 .body("zoneOutcomes.zone", not(hasItem("admin.u/other.test")));
     }
 
+    /**
+     * The OpenAPI document is published with the DNSCheck API title and the health path.
+     */
     @Test
     @Order(8)
     void openapiDocumentIsServed() {
@@ -160,12 +202,24 @@ class ReconciliationApiTest {
                 .body("paths.'/api/v1/health'", notNullValue());
     }
 
+    /**
+     * Creates an operator whose password matches the username when that operator is missing.
+     *
+     * @param username operator username to ensure.
+     */
     private void ensureOperator(String username) {
         if (Operator.findByUsername(username) == null) {
             operatorAuthService.createOperator(username, username);
         }
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)
@@ -179,6 +233,9 @@ class ReconciliationApiTest {
                 .getValue();
     }
 
+    /**
+     * Writes zone definitions and TSIG key files for the reader owner folder and the admin owner folder.
+     */
     private static void seedReconciliationFixtures() throws IOException {
         Path zonesDir = Path.of("target/test-zones");
         Path keysDir = Path.of("target/test-keys");

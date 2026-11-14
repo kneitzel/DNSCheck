@@ -9,9 +9,19 @@ import jakarta.ws.rs.ext.Provider;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Translates a missing key file failure into HTTP 409 when a zone definition references a key file
+ * that is not on disk.
+ */
 @Provider
 public class MissingKeyFileExceptionMapper implements ExceptionMapper<MissingKeyFileException> {
 
+    /**
+     * Builds the conflict response for a zone definition whose key file is missing.
+     *
+     * @param exception Supplies the error message and the scoped path of the missing key file.
+     * @return HTTP 409 response whose JSON body contains the message and the scoped key path.
+     */
     @Override
     public Response toResponse(MissingKeyFileException exception) {
         Map<String, Object> body = new LinkedHashMap<>();

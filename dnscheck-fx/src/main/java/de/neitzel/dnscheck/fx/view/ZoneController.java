@@ -24,9 +24,24 @@ import java.nio.file.Path;
 @Singleton
 public class ZoneController implements HasViewModel {
 
+    /**
+     * The desk that holds the open zone.
+     */
     private final Desk desk;
+
+    /**
+     * Catalog access used to save and reconcile the open zone.
+     */
     private final ZoneFiles zoneFiles;
+
+    /**
+     * The zone ViewModel, set before the bindings run.
+     */
     private ViewModel viewModel;
+
+    /**
+     * Whether a reconciliation run is already going.
+     */
     private boolean busy;
 
     /**
@@ -88,6 +103,11 @@ public class ZoneController implements HasViewModel {
         run(false);
     }
 
+    /**
+     * Saves the open zone, then dry-runs or reconciles it.
+     *
+     * @param dryRun {@code true} to report drift without sending {@code nsupdate}
+     */
     private void run(boolean dryRun) {
         if (busy) {
             viewModel.addMessage(new Message(
@@ -109,6 +129,15 @@ public class ZoneController implements HasViewModel {
         });
     }
 
+    /**
+     * Reconciles the open zone, turning a failure into a failed zone outcome.
+     *
+     * @param zones   the zone catalog directory
+     * @param keys    the keys directory
+     * @param editor  the zone being reconciled
+     * @param dryRun  {@code true} to report drift without sending {@code nsupdate}
+     * @return the zone outcome
+     */
     private ZoneReconciliationResult reconcile(Path zones, Path keys, ZoneEditor editor, boolean dryRun) {
         try {
             return zoneFiles.reconcile(zones, keys, editor.getOwnerFolder(), editor.getZone(), dryRun);
@@ -120,6 +149,16 @@ public class ZoneController implements HasViewModel {
         }
     }
 
+    /**
+     * Writes the zone outcome on the JavaFX thread.
+     * <p>
+     * The open zone's ViewModel receives it when that zone is still open. Otherwise the catalog
+     * ViewModel receives it.
+     *
+     * @param editor the zone that was reconciled
+     * @param target the ViewModel of that zone
+     * @param result the zone outcome
+     */
     private void finish(ZoneEditor editor, ViewModel target, ZoneReconciliationResult result) {
         busy = false;
         ViewModel shown = desk.zone() == editor ? target : desk.catalogView();
@@ -133,6 +172,11 @@ public class ZoneController implements HasViewModel {
                 "reconcile"));
     }
 
+    /**
+     * Writes the open zone definition to disk.
+     *
+     * @return {@code true} when the file was written
+     */
     private boolean write() {
         try {
             zoneFiles.save(desk.zone());

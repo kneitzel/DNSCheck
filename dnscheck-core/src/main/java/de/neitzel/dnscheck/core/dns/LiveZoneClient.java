@@ -18,18 +18,43 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Loads a live zone by AXFR.
+ * The SOA record is omitted from the record set, and its minimum field is kept as the zone default TTL.
+ */
 public final class LiveZoneClient {
 
+    /**
+     * Normalizes the zone name to the absolute form dnsjava expects for the transfer.
+     */
     private final ZoneNameNormalizer nameNormalizer;
 
+    /**
+     * Creates a client that uses a new zone name normalizer.
+     */
     public LiveZoneClient() {
         this(new ZoneNameNormalizer());
     }
 
+    /**
+     * Creates a client that uses the supplied zone name normalizer.
+     *
+     * @param nameNormalizer the normalizer used to build the AXFR zone name.
+     */
     LiveZoneClient(ZoneNameNormalizer nameNormalizer) {
         this.nameNormalizer = nameNormalizer;
     }
 
+    /**
+     * Transfers the zone with AXFR authenticated by the TSIG key.
+     * The returned live zone excludes the SOA record.
+     *
+     * @param zone the DNS zone to transfer.
+     * @param nameserver the authoritative nameserver to contact.
+     * @param tsigKey the TSIG key used to authenticate the transfer.
+     * @return the live zone, including the zone default TTL.
+     * @throws IOException when the transfer fails or the nameserver cannot be queried.
+     */
     @SuppressWarnings("unchecked")
     public LiveZone load(String zone, String nameserver, TsigKey tsigKey) throws IOException {
         Name zoneName = nameNormalizer.toDnsName(ensureTrailingDot(zone));
@@ -57,6 +82,13 @@ public final class LiveZoneClient {
         return new LiveZone(zone, defaultTtl, records);
     }
 
+    /**
+     * Reads the zone default TTL from the SOA minimum field.
+     * When the SOA is not an SOA record, the record TTL is used instead.
+     *
+     * @param zone the dnsjava zone produced from the AXFR.
+     * @return the zone default TTL in seconds.
+     */
     private static long extractDefaultTtl(Zone zone) {
         Record soa = zone.getSOA();
         if (soa instanceof SOARecord soaRecord) {
@@ -65,6 +97,12 @@ public final class LiveZoneClient {
         return soa.getTTL();
     }
 
+    /**
+     * Converts one dnsjava record to the canonical form used for drift and the zone view.
+     *
+     * @param record the transferred record.
+     * @return the live record with its owner name, type mnemonic, rdata, and TTL.
+     */
     private DnsRecord toDnsRecord(Record record) {
         return new DnsRecord(
                 record.getName().toString(),
@@ -73,6 +111,14 @@ public final class LiveZoneClient {
                 record.getTTL());
     }
 
+    /**
+     * Builds a dnsjava TSIG from a TSIG key.
+     * A trailing dot on the algorithm name is accepted.
+     *
+     * @param key the TSIG key from the key file.
+     * @return the TSIG used to sign AXFR and nsupdate.
+     * @throws IllegalArgumentException when the algorithm is not an HMAC-MD5 or HMAC-SHA variant this client supports.
+     */
     static TSIG resolveTsig(TsigKey key) {
         Name algorithm = switch (key.algorithm().toLowerCase()) {
             case "hmac-md5", "hmac-md5." -> TSIG.HMAC_MD5;
@@ -86,6 +132,12 @@ public final class LiveZoneClient {
         return new TSIG(algorithm, key.name(), key.secret());
     }
 
+    /**
+     * Appends a trailing dot so the zone name is absolute for AXFR.
+     *
+     * @param zone the zone name.
+     * @return the zone name with exactly one trailing dot.
+     */
     private static String ensureTrailingDot(String zone) {
         return zone.endsWith(".") ? zone : zone + ".";
     }

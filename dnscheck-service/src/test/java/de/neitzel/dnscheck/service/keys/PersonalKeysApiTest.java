@@ -19,9 +19,15 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 
+/**
+ * Tests TSIG key files stored in an operator owner folder.
+ */
 @QuarkusTest
 class PersonalKeysApiTest {
 
+    /**
+     * BIND native key file body used as a valid personal TSIG key.
+     */
     private static final String VALID_KEY = """
             key "example.com" {
               algorithm hmac-sha256;
@@ -29,9 +35,15 @@ class PersonalKeysApiTest {
             };
             """;
 
+    /**
+     * Service used to create fixture operators and grant the admin global right.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Clears the test key directory before each test.
+     */
     @BeforeEach
     void prepareKeysDir() throws Exception {
         Path keysDir = Path.of("target/test-keys");
@@ -60,6 +72,9 @@ class PersonalKeysApiTest {
         }
     }
 
+    /**
+     * Creates an admin operator and two operators without a global right.
+     */
     @BeforeEach
     @Transactional
     void seedOperators() {
@@ -68,6 +83,9 @@ class PersonalKeysApiTest {
         ensureOperator("keys-other", "keys-other", null);
     }
 
+    /**
+     * The owner can create, list, read, replace, download, and delete a TSIG key in that operator's owner folder.
+     */
     @Test
     void ownerCanUploadListEditAndDeletePersonalKey() {
         String cookie = login("keys-owner", "keys-owner");
@@ -125,6 +143,9 @@ class PersonalKeysApiTest {
                 .statusCode(204);
     }
 
+    /**
+     * Uploading a personal key that already exists is rejected.
+     */
     @Test
     void duplicateUploadReturns409() {
         String cookie = login("keys-owner", "keys-owner");
@@ -149,6 +170,9 @@ class PersonalKeysApiTest {
                 .statusCode(409);
     }
 
+    /**
+     * An admin's personal key list contains only that admin's keys and does not reveal another operator's key.
+     */
     @Test
     void adminOnlySeesOwnPersonalKeys() {
         String ownerCookie = login("keys-owner", "keys-owner");
@@ -189,6 +213,9 @@ class PersonalKeysApiTest {
                 .statusCode(404);
     }
 
+    /**
+     * Listing personal keys without a session is rejected.
+     */
     @Test
     void unauthenticatedRequestsAreRejected() {
         given()
@@ -198,6 +225,13 @@ class PersonalKeysApiTest {
                 .statusCode(401);
     }
 
+    /**
+     * Creates the operator when it is missing and grants a global right when one is supplied.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @param globalRight global right to grant, or null when the operator should have none.
+     */
     private void ensureOperator(String username, String password, GlobalRightKind globalRight) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -208,6 +242,13 @@ class PersonalKeysApiTest {
         }
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

@@ -48,6 +48,11 @@ public class DnsCheckFxApp extends Application {
         stage.show();
     }
 
+    /**
+     * Builds the catalog Model from the environment, falling back to {@code ./zones} and {@code ./keys}.
+     *
+     * @return the catalog Model
+     */
     private static CatalogSession session() {
         CatalogSession session = new CatalogSession();
         session.setZonesDirectory(directory("DNSCHECK_ZONES_DIR", "./zones"));
@@ -57,6 +62,13 @@ public class DnsCheckFxApp extends Application {
         return session;
     }
 
+    /**
+     * Returns the directory named by an environment variable, or the fallback when it is unset or blank.
+     *
+     * @param env      the environment variable
+     * @param fallback the directory used when the variable is unset or blank
+     * @return the directory
+     */
     private static String directory(String env, String fallback) {
         String value = System.getenv(env);
         if (value == null || value.isBlank()) {

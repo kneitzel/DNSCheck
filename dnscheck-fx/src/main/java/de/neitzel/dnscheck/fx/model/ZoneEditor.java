@@ -15,12 +15,39 @@ import java.util.List;
  */
 public class ZoneEditor {
 
+    /**
+     * The owner folder that holds the zone file.
+     */
     private String ownerFolder = "";
+
+    /**
+     * The zone name. It stays the file name and is not edited.
+     */
     private String zone = "";
+
+    /**
+     * The nameserver edited in the View.
+     */
     private String nameserver = "";
+
+    /**
+     * The key file edited in the View.
+     */
     private String keyFile = "";
+
+    /**
+     * The path of the zone definition file this editor was loaded from.
+     */
     private String sourcePath = "";
+
+    /**
+     * The records edited in the View. After the View loads, this is the list the table watches.
+     */
     private List<RecordEditor> records = new ArrayList<>();
+
+    /**
+     * The outcome text shown under the zone.
+     */
     private String outcome = "";
 
     /**

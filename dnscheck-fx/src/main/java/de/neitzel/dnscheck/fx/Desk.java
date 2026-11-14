@@ -12,9 +12,24 @@ import jakarta.inject.Singleton;
 @Singleton
 public class Desk {
 
+    /**
+     * The catalog Model the catalog View binds to.
+     */
     private CatalogSession catalog;
+
+    /**
+     * The zone Model currently open, or {@code null} when none is open.
+     */
     private ZoneEditor zone;
+
+    /**
+     * The container that loads Views.
+     */
     private ApplicationContext context;
+
+    /**
+     * The ViewModel of the catalog View, or {@code null} before that View has loaded.
+     */
     private ViewModel catalogView;
 
     /**

@@ -16,13 +16,19 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Saves a zone definition edited as ordinary Java beans.
+ * Saves a zone definition edited as ordinary java beans.
  */
 class ZoneFilesTest {
 
+    /**
+     * A temporary directory for zone files.
+     */
     @TempDir
     Path temp;
 
+    /**
+     * Saves edited rdata, a numeric TTL, and a deletion marker.
+     */
     @Test
     void saveWritesEditedRdataTtlAndADeletionMarker() throws Exception {
         Path zones = temp.resolve("zones");
@@ -67,6 +73,9 @@ class ZoneFilesTest {
         assertEquals("gone*", definition.records().get(1).rdataPattern());
     }
 
+    /**
+     * Rejects a TTL that is not a number.
+     */
     @Test
     void saveRejectsATtlThatIsNotANumber() throws Exception {
         Path zones = temp.resolve("zones");

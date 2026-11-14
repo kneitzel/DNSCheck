@@ -31,6 +31,9 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 class DnsCheckFxLoadsTest {
 
+    /**
+     * Starts the JavaFX toolkit once for this class.
+     */
     @BeforeAll
     static void startJavaFx() throws InterruptedException {
         CountDownLatch started = new CountDownLatch(1);
@@ -44,6 +47,9 @@ class DnsCheckFxLoadsTest {
         }
     }
 
+    /**
+     * Catalog and zone views load.
+     */
     @Test
     void catalogAndZoneViewsLoad() throws Exception {
         onFx(() -> {
@@ -81,6 +87,13 @@ class DnsCheckFxLoadsTest {
         });
     }
 
+    /**
+     * Counts nodes of the given type under a root.
+     *
+     * @param node the node
+     * @param type the node type
+     * @return the number of matching nodes
+     */
     private static int count(Node node, Class<?> type) {
         int found = type.isInstance(node) ? 1 : 0;
         if (node instanceof ScrollPane scroll && scroll.getContent() != null) {
@@ -97,6 +110,13 @@ class DnsCheckFxLoadsTest {
         return found;
     }
 
+    /**
+     * Returns the text of the field whose current text equals the expected value.
+     *
+     * @param node the node
+     * @param expected the field text to find
+     * @return the field text
+     */
     private static String text(Node node, String expected) {
         if (node instanceof TextField field && expected.equals(field.getText())) {
             return field.getText();
@@ -121,6 +141,11 @@ class DnsCheckFxLoadsTest {
         return null;
     }
 
+    /**
+     * Runs one check on the JavaFX application thread.
+     *
+     * @param check the check
+     */
     private static void onFx(Runnable check) throws InterruptedException {
         CountDownLatch done = new CountDownLatch(1);
         AtomicReference<Throwable> failure = new AtomicReference<>();

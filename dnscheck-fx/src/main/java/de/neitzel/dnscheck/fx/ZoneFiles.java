@@ -20,6 +20,9 @@ import java.util.List;
 @Singleton
 public class ZoneFiles {
 
+    /**
+     * Reads and writes zone definition files.
+     */
     private final ZoneDefinitionStore store = new ZoneDefinitionStore();
 
     /**

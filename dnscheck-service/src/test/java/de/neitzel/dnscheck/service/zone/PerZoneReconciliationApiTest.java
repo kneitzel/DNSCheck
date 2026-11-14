@@ -21,19 +21,40 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.hasSize;
 
+/**
+ * Tests reconciliation of a single zone catalog entry.
+ */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class PerZoneReconciliationApiTest {
 
+    /**
+     * Owner folder of the operator who may reconcile the zone.
+     */
     private static final String WRITER_OWNER = "zone-reconcile-writer.u";
 
+    /**
+     * Service used to create the fixture operators.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Session cookie for the operator who owns the zone.
+     */
     private static String writerCookie;
+    /**
+     * Session cookie for an operator who does not own the zone.
+     */
     private static String readerCookie;
+    /**
+     * Session cookie for the admin operator.
+     */
     private static String adminCookie;
 
+    /**
+     * Writes the zone definition and TSIG key, and creates the writer and reader operators.
+     */
     @Test
     @Order(0)
     @Transactional
@@ -44,6 +65,9 @@ class PerZoneReconciliationApiTest {
         ensureOperator("zone-reconcile-reader", "zone-reconcile-reader");
     }
 
+    /**
+     * The zone owner can run a dry-run reconciliation for that zone catalog entry and sees one zone outcome.
+     */
     @Test
     @Order(1)
     void writerCanReconcileZoneWithDryRun() {
@@ -60,6 +84,9 @@ class PerZoneReconciliationApiTest {
                 .body("zoneOutcomes[0].zone", is("zone-reconcile-writer.u/example.com"));
     }
 
+    /**
+     * An operator who does not own the zone cannot reconcile it.
+     */
     @Test
     @Order(2)
     void readerIsDeniedPerZoneReconcile() {
@@ -73,6 +100,9 @@ class PerZoneReconciliationApiTest {
                 .statusCode(403);
     }
 
+    /**
+     * An explicit dry-run value of false is reported on the zone reconciliation.
+     */
     @Test
     @Order(3)
     void dryRunOverrideAppliesWhenExplicitlyFalse() {
@@ -86,6 +116,9 @@ class PerZoneReconciliationApiTest {
                 .body("dryRun", is(false));
     }
 
+    /**
+     * Reconciling a zone that is not in the owner folder returns not found.
+     */
     @Test
     @Order(4)
     void missingZoneReturnsNotFound() {
@@ -98,6 +131,13 @@ class PerZoneReconciliationApiTest {
                 .statusCode(404);
     }
 
+    /**
+     * Returns the named operator, creating it when it is missing.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the existing or newly created operator.
+     */
     private Operator ensureOperator(String username, String password) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -106,6 +146,13 @@ class PerZoneReconciliationApiTest {
         return operator;
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)
@@ -119,6 +166,9 @@ class PerZoneReconciliationApiTest {
                 .getValue();
     }
 
+    /**
+     * Writes the writer's zone definition and TSIG key file.
+     */
     private static void seedFixtures() throws IOException {
         Path zonesDir = Path.of("target/test-zones");
         Path keysDir = Path.of("target/test-keys");

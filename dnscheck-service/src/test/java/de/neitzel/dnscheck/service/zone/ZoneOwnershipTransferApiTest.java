@@ -29,15 +29,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests transfer of a zone definition into another owner folder.
+ */
 @QuarkusTest
 class ZoneOwnershipTransferApiTest {
 
+    /**
+     * Mock live zone loader that returns an empty live zone for the requested zone.
+     */
     @InjectMock
     LiveZoneLoader liveZoneLoader;
 
+    /**
+     * Service used to create the owner, member, and collaborator.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Stubs live zone loading with an empty record set for whichever zone is requested.
+     */
     @BeforeEach
     void stubLiveZone() throws Exception {
         when(liveZoneLoader.load(any(ZoneDefinition.class), any(Path.class)))
@@ -47,6 +59,9 @@ class ZoneOwnershipTransferApiTest {
                 });
     }
 
+    /**
+     * Creates the operators and group, clears the collaborator's supplemental zone grants, and writes the personal and group zone definitions.
+     */
     @BeforeEach
     @Transactional
     void seed() throws Exception {
@@ -83,6 +98,9 @@ class ZoneOwnershipTransferApiTest {
         Files.deleteIfExists(zonesDir.resolve("admin.u/shared.example.json"));
     }
 
+    /**
+     * The owner can transfer a personal zone definition into the group owner folder.
+     */
     @Test
     void ownerCanTransferPersonalZoneToGroup() {
         String ownerCookie = login("xfer-owner", "xfer-owner");
@@ -103,6 +121,9 @@ class ZoneOwnershipTransferApiTest {
         assertTrue(Files.exists(Path.of("target/test-zones/xfer-team.g/personal.example.json")));
     }
 
+    /**
+     * An admin can transfer a group zone definition into the admin owner folder.
+     */
     @Test
     void adminCanTransferGroupZone() throws Exception {
         String adminCookie = login("admin", "admin");
@@ -122,6 +143,9 @@ class ZoneOwnershipTransferApiTest {
         assertTrue(Files.exists(Path.of("target/test-zones/admin.u/shared.example.json")));
     }
 
+    /**
+     * A group member cannot transfer the group's zone definition.
+     */
     @Test
     void groupMemberCannotTransferGroupZone() {
         String memberCookie = login("xfer-member", "xfer-member");
@@ -138,6 +162,9 @@ class ZoneOwnershipTransferApiTest {
         assertTrue(Files.exists(Path.of("target/test-zones/xfer-team.g/shared.example.json")));
     }
 
+    /**
+     * A supplemental read zone grant moves with the zone definition, and the collaborator can still read the zone view.
+     */
     @Test
     void supplementalGrantsFollowTransfer() {
         String adminCookie = login("admin", "admin");
@@ -189,6 +216,13 @@ class ZoneOwnershipTransferApiTest {
                         hasSize(0));
     }
 
+    /**
+     * Returns the named operator, creating it when it is missing.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the existing or newly created operator.
+     */
     private Operator ensureOperator(String username, String password) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -197,6 +231,13 @@ class ZoneOwnershipTransferApiTest {
         return operator;
     }
 
+    /**
+     * Writes an empty zone definition.
+     *
+     * @param path zone definition file to write.
+     * @param zone zone name stored in the file.
+     * @param ownerFolder owner folder referenced by the key file path.
+     */
     private static void writeZone(Path path, String zone, String ownerFolder) throws Exception {
         Files.writeString(
                 path,
@@ -210,6 +251,13 @@ class ZoneOwnershipTransferApiTest {
                 """.formatted(zone, zone, ownerFolder, zone));
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

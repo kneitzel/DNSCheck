@@ -8,18 +8,48 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/**
+ * Updates, deletes, and transfers zone definition files inside the zone catalog.
+ * An update of the nameserver or key file leaves managed records unchanged.
+ */
 public final class ZoneDefinitionMutator {
 
+    /**
+     * Reads and writes the zone definition being changed.
+     */
     private final ZoneDefinitionStore store;
 
+    /**
+     * Creates a mutator that uses a new zone definition store.
+     */
     public ZoneDefinitionMutator() {
         this(new ZoneDefinitionStore());
     }
 
+    /**
+     * Creates a mutator that reads and writes through {@code store}.
+     *
+     * @param store the store for the zone definition file.
+     */
     ZoneDefinitionMutator(ZoneDefinitionStore store) {
         this.store = store;
     }
 
+    /**
+     * Replaces the nameserver, the key file, or both on an existing zone definition.
+     * A null argument keeps the current value.
+     *
+     * @param zonesDirectory the zone catalog root.
+     * @param ownerFolder the owner folder that contains the zone definition.
+     * @param zone the DNS zone name.
+     * @param nameserver the replacement nameserver, or {@code null} to keep the current one.
+     * @param keyFile the replacement scoped key path, or {@code null} to keep the current one.
+     * @return the catalog entry after the update.
+     * @throws IllegalArgumentException when the owner folder or zone is blank, both replacements are null,
+     *                                  a supplied value is blank, or a name is not safe.
+     * @throws IOException when the catalog is missing or the file cannot be read or written.
+     * @throws ZoneDefinitionNotFoundException when the catalog entry does not exist.
+     */
     public ZoneCatalogEntry update(
             Path zonesDirectory, String ownerFolder, String zone, String nameserver, String keyFile)
             throws IOException {
@@ -63,6 +93,17 @@ public final class ZoneDefinitionMutator {
                 updatedKeyFile);
     }
 
+    /**
+     * Deletes the zone definition file.
+     * The live zone is not changed.
+     *
+     * @param zonesDirectory the zone catalog root.
+     * @param ownerFolder the owner folder that contains the zone definition.
+     * @param zone the DNS zone name.
+     * @throws IllegalArgumentException when the owner folder or zone is blank or not safe.
+     * @throws IOException when the catalog is missing or the file cannot be deleted.
+     * @throws ZoneDefinitionNotFoundException when the catalog entry does not exist.
+     */
     public void delete(Path zonesDirectory, String ownerFolder, String zone) throws IOException {
         if (ownerFolder == null || ownerFolder.isBlank()) {
             throw new IllegalArgumentException("owner folder is required");
@@ -83,6 +124,21 @@ public final class ZoneDefinitionMutator {
         Files.delete(zoneFile);
     }
 
+    /**
+     * Moves a zone definition to another owner folder without changing its records, nameserver, or key file.
+     * The source file is removed after the target file is written.
+     *
+     * @param zonesDirectory the zone catalog root.
+     * @param fromOwnerFolder the owner folder that currently contains the zone definition.
+     * @param zone the DNS zone name.
+     * @param toOwnerFolder the owner folder that should contain the zone definition.
+     * @return the catalog entry at the target owner folder.
+     * @throws IllegalArgumentException when a folder or the zone is blank, the folders are the same,
+     *                                  or a name is not safe.
+     * @throws IOException when the catalog is missing or a file cannot be read, written, or deleted.
+     * @throws ZoneDefinitionNotFoundException when the source file does not exist.
+     * @throws ZoneAlreadyExistsException when the target catalog entry already exists.
+     */
     public ZoneCatalogEntry transfer(
             Path zonesDirectory, String fromOwnerFolder, String zone, String toOwnerFolder)
             throws IOException {

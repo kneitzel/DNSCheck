@@ -10,13 +10,25 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+/**
+ * Tests update, deletion, and ownership transfer of a zone definition.
+ */
 class ZoneDefinitionMutatorTest {
 
+    /**
+     * Owner folder that holds the zone definitions under test.
+     */
     private static final String OWNER = "admin.u";
 
+    /**
+     * Temporary zone catalog root.
+     */
     @TempDir
     Path zonesDir;
 
+    /**
+     * Updating a zone definition stores the new nameserver and key file path.
+     */
     @Test
     void updateChangesNameserverAndKeyFile() throws Exception {
         ZoneDefinitionCreator creator = new ZoneDefinitionCreator();
@@ -32,6 +44,9 @@ class ZoneDefinitionMutatorTest {
         assertEquals("admin.u/example.com.new.key", new ZoneDefinitionStore().read(zoneFile).keyFile());
     }
 
+    /**
+     * Deleting a zone definition removes its file from the owner folder.
+     */
     @Test
     void deleteRemovesZoneDefinitionFile() throws Exception {
         ZoneDefinitionCreator creator = new ZoneDefinitionCreator();
@@ -44,12 +59,18 @@ class ZoneDefinitionMutatorTest {
         assertFalse(Files.exists(zoneFile));
     }
 
+    /**
+     * Updating a zone definition that is not in the catalog is rejected.
+     */
     @Test
     void updateMissingZoneThrows() {
         assertThrows(ZoneDefinitionNotFoundException.class, () ->
                 new ZoneDefinitionMutator().update(zonesDir, OWNER, "missing.test", "ns1.missing.test", null));
     }
 
+    /**
+     * Transfer moves the zone definition from the operator owner folder into the group owner folder.
+     */
     @Test
     void transferMovesZoneToNewOwnerFolder() throws Exception {
         ZoneDefinitionCreator creator = new ZoneDefinitionCreator();
@@ -66,6 +87,9 @@ class ZoneDefinitionMutatorTest {
                 new ZoneDefinitionStore().read(zonesDir.resolve("dns-team.g/example.com.json")).nameserver());
     }
 
+    /**
+     * Transfer is rejected when the destination owner folder already has that zone definition.
+     */
     @Test
     void transferRejectsWhenTargetExists() throws Exception {
         ZoneDefinitionCreator creator = new ZoneDefinitionCreator();

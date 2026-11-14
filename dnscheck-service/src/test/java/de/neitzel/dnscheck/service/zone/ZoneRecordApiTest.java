@@ -34,26 +34,53 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests creation of ad-hoc records and enforced managed records.
+ */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ZoneRecordApiTest {
 
+    /**
+     * Owner folder of the operator who may create records.
+     */
     private static final String WRITER_OWNER = "writer.u";
 
+    /**
+     * Mock live zone loader that merges the mutable live records with managed records.
+     */
     @InjectMock
     LiveZoneLoader liveZoneLoader;
 
+    /**
+     * Mock updater that appends added records to the live zone fixture.
+     */
     @InjectMock
     DnsUpdater dnsUpdater;
 
+    /**
+     * Service used to create the writer and reader operators.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Mutable live zone records shared by the loader and the updater stub.
+     */
     private static final CopyOnWriteArrayList<DnsRecord> LIVE_RECORDS = new CopyOnWriteArrayList<>();
 
+    /**
+     * Session cookie for the operator who owns the zone.
+     */
     private static String writerCookie;
+    /**
+     * Session cookie for an operator without the write zone right.
+     */
     private static String readerCookie;
 
+    /**
+     * Stubs live zone loading and applies add changes to the live record fixture.
+     */
     @BeforeEach
     void stubLiveZoneAndDnsUpdater() throws Exception {
         when(liveZoneLoader.load(any(ZoneDefinition.class), any(Path.class)))
@@ -82,6 +109,9 @@ class ZoneRecordApiTest {
         }).when(dnsUpdater).apply(any(ZoneDefinition.class), any(Path.class), any());
     }
 
+    /**
+     * Seeds the live zone, writes the zone definition and TSIG key, and creates the writer and reader.
+     */
     @Test
     @Order(0)
     @Transactional
@@ -125,6 +155,9 @@ class ZoneRecordApiTest {
         ensureOperator("reader", "reader");
     }
 
+    /**
+     * Creating a record without a session is rejected.
+     */
     @Test
     @Order(1)
     void unauthenticatedCreateIsRejected() {
@@ -141,6 +174,9 @@ class ZoneRecordApiTest {
                 .statusCode(401);
     }
 
+    /**
+     * An operator without the write zone right cannot create a record.
+     */
     @Test
     @Order(2)
     void readerCannotCreateRecords() {
@@ -159,6 +195,9 @@ class ZoneRecordApiTest {
                 .statusCode(403);
     }
 
+    /**
+     * Creating a record without enforcement adds an ad-hoc record to the live zone and leaves the zone definition unchanged.
+     */
     @Test
     @Order(3)
     void adHocCreateUpdatesLiveZoneOnly() throws Exception {
@@ -183,6 +222,9 @@ class ZoneRecordApiTest {
         verify(dnsUpdater).apply(any(ZoneDefinition.class), any(Path.class), any());
     }
 
+    /**
+     * Creating an enforced record writes the managed record into the zone definition and shows it as enforced.
+     */
     @Test
     @Order(4)
     void enforcedCreateWritesDefinitionAndUpdatesLiveZone() throws Exception {
@@ -206,6 +248,9 @@ class ZoneRecordApiTest {
         assert zoneJson.contains("192.0.2.50");
     }
 
+    /**
+     * Creating a record in a zone that is not in the owner folder returns not found.
+     */
     @Test
     @Order(5)
     void missingZoneReturnsNotFound() {
@@ -224,6 +269,13 @@ class ZoneRecordApiTest {
                 .statusCode(404);
     }
 
+    /**
+     * Returns the named operator, creating it when it is missing.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the existing or newly created operator.
+     */
     private Operator ensureOperator(String username, String password) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -232,6 +284,13 @@ class ZoneRecordApiTest {
         return operator;
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

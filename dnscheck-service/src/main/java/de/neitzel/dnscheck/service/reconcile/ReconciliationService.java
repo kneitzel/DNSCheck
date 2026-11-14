@@ -23,28 +23,57 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Runs reconciliation for the zone catalog or one zone catalog entry and keeps the latest run status.
+ */
 @ApplicationScoped
 public class ReconciliationService {
 
+    /**
+     * Latest reconciliation run status, including every zone outcome, before it is filtered for an operator.
+     */
     private final AtomicReference<ReconciliationStatusResponse> lastRunStatus = new AtomicReference<>();
 
+    /**
+     * Service configuration for the zone catalog location, keys directory, schedule, and dry-run default.
+     */
     @Inject
     DnsCheckConfig config;
 
+    /**
+     * Checks admin and zone rights before a reconciliation run and when filtering zone outcomes.
+     */
     @Inject
     OperatorRightsService operatorRightsService;
 
+    /**
+     * Opens the zone catalog so one zone catalog entry can be loaded before reconciliation.
+     */
     @Inject
     ZoneCatalogSupport zoneCatalogSupport;
 
+    /**
+     * Checks that the zone definition's key file exists before that zone catalog entry is reconciled.
+     */
     @Inject
     KeyUsageService keyUsageService;
 
+    /**
+     * Starts a scheduled reconciliation run for every zone catalog entry.
+     * Uses the service dry-run default and bypasses operator rights checks.
+     */
     @Scheduled(every = "{dnscheck.schedule.interval}")
     void scheduledReconcile() {
         reconcileAllInternal(config.dryRun());
     }
 
+    /**
+     * Runs reconciliation for every zone catalog entry.
+     *
+     * @param dryRun Whether this reconciliation run is a dry-run. A dry-run reports drift and leaves each live zone unchanged.
+     * @return Status of the reconciliation run, including each zone outcome.
+     * @throws jakarta.ws.rs.ForbiddenException When the operator lacks the admin global right.
+     */
     public ReconciliationStatusResponse reconcileAll(boolean dryRun) {
         operatorRightsService.requireAdmin();
         DefaultReconciliationEngine engine = newEngine();
@@ -55,6 +84,18 @@ public class ReconciliationService {
         return status;
     }
 
+    /**
+     * Runs reconciliation for one zone catalog entry.
+     *
+     * @param ownerFolder Name of the owner folder that contains the zone definition.
+     * @param zoneName Zone name of the zone catalog entry.
+     * @param dryRun Whether this reconciliation run is a dry-run. A dry-run reports drift and leaves the live zone unchanged.
+     * @return Status of the reconciliation run containing that zone outcome.
+     * @throws jakarta.ws.rs.ForbiddenException When the operator lacks write on the zone catalog entry.
+     * @throws NotFoundException When the zone catalog has no matching zone definition.
+     * @throws de.neitzel.dnscheck.core.key.MissingKeyFileException When the zone definition's key file is absent.
+     * @throws UncheckedIOException When the zone catalog cannot be read.
+     */
     public ReconciliationStatusResponse reconcileZone(String ownerFolder, String zoneName, boolean dryRun) {
         operatorRightsService.requireWrite(ownerFolder, zoneName);
         try {
@@ -74,6 +115,11 @@ public class ReconciliationService {
         return status;
     }
 
+    /**
+     * Returns the latest reconciliation run status with zone outcomes limited to entries the operator can read.
+     *
+     * @return Filtered status, or a status that records that no reconciliation run has completed in this process.
+     */
     public ReconciliationStatusResponse lastRunStatusForOperator() {
         ReconciliationStatusResponse status = lastRunStatus.get();
         if (status == null) {
@@ -82,6 +128,12 @@ public class ReconciliationService {
         return filterZoneOutcomes(status);
     }
 
+    /**
+     * Keeps zone outcomes for zone catalog entries the current operator can read.
+     *
+     * @param status Full status stored for the latest reconciliation run.
+     * @return Status whose zone outcomes are visible to the current operator.
+     */
     private ReconciliationStatusResponse filterZoneOutcomes(ReconciliationStatusResponse status) {
         List<ZoneOutcome> zoneOutcomes = status.getZoneOutcomes();
         if (zoneOutcomes == null || zoneOutcomes.isEmpty()) {
@@ -98,6 +150,14 @@ public class ReconciliationService {
                 .zoneOutcomes(visible);
     }
 
+    /**
+     * Reports whether the current operator may see this zone outcome.
+     * A missing, blank, {@code *}, or unscoped catalog reference is visible only with the admin global right.
+     * Any other reference requires read on that zone catalog entry.
+     *
+     * @param outcome Zone outcome from the latest reconciliation run.
+     * @return {@code true} when the operator may see that zone outcome.
+     */
     private boolean canReadOutcome(ZoneOutcome outcome) {
         String catalogRef = outcome.getZone();
         if (catalogRef == null || catalogRef.isBlank() || "*".equals(catalogRef)) {
@@ -111,7 +171,12 @@ public class ReconciliationService {
                 identity.ownerFolder().folderName(), identity.zoneName());
     }
 
-    /** Used by scheduled reconciliation only; bypasses rights checks. */
+    /**
+     * Used by scheduled reconciliation only; bypasses rights checks.
+     *
+     * @param dryRun Whether this reconciliation run is a dry-run. A dry-run reports drift and leaves each live zone unchanged.
+     * @return Status of the reconciliation run, including each zone outcome.
+     */
     ReconciliationStatusResponse reconcileAllInternal(boolean dryRun) {
         DefaultReconciliationEngine engine = newEngine();
         ReconciliationRunResult result = engine.reconcileAll(dryRun);
@@ -121,11 +186,21 @@ public class ReconciliationService {
         return status;
     }
 
+    /**
+     * Creates a reconciliation engine bound to the configured zone catalog and keys directory.
+     *
+     * @return Engine used for the next reconciliation run.
+     */
     private DefaultReconciliationEngine newEngine() {
         return new DefaultReconciliationEngine(
                 Path.of(config.zones().dir()), Path.of(config.keys().dir()));
     }
 
+    /**
+     * Returns the latest reconciliation run status visible to the current operator.
+     *
+     * @return Same filtered status as {@link #lastRunStatusForOperator()}.
+     */
     public ReconciliationStatusResponse lastRunStatus() {
         return lastRunStatusForOperator();
     }

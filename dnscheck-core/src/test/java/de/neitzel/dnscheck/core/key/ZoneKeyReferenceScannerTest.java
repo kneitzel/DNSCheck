@@ -13,11 +13,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Tests discovery of TSIG key references across the zone catalog.
+ */
 class ZoneKeyReferenceScannerTest {
 
+    /**
+     * Temporary root that holds the zone catalog and the key files.
+     */
     @TempDir
     Path tempDir;
 
+    /**
+     * A missing key referenced by two zone definitions is reported once with both catalog entries counted, and a present key is found on disk.
+     */
     @Test
     void findsInUseReferencesAndMissingKeys() throws Exception {
         Path zonesDir = tempDir.resolve("zones");

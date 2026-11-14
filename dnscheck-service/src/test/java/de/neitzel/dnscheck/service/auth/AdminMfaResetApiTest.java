@@ -21,23 +21,53 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 
+/**
+ * Tests an admin MFA reset of another operator's MFA enrollment.
+ */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class AdminMfaResetApiTest {
 
+    /**
+     * Username of the operator whose MFA enrollment is reset.
+     */
     private static final String TARGET_USERNAME = "reset-target";
+    /**
+     * Password of the operator whose MFA enrollment is reset.
+     */
     private static final String TARGET_PASSWORD = "reset-target";
 
+    /**
+     * Generator used to produce the confirmation code for MFA enrollment.
+     */
     private static final MfaCodeService MFA_CODE_SERVICE = new MfaCodeService();
 
+    /**
+     * Service used to create the target operator when it is missing.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Session cookie for the operator whose MFA enrollment is reset.
+     */
     private static String targetCookie;
+    /**
+     * Session cookie for the admin who performs the MFA reset.
+     */
     private static String adminCookie;
+    /**
+     * Pending MFA enrollment secret returned to the target operator.
+     */
     private static String setupKey;
+    /**
+     * Database id of the operator whose MFA enrollment is reset.
+     */
     private static Long targetOperatorId;
 
+    /**
+     * Creates the target operator when it does not already exist.
+     */
     @BeforeEach
     @Transactional
     void ensureTargetOperatorExists() {
@@ -47,6 +77,9 @@ class AdminMfaResetApiTest {
         targetOperatorId = Operator.findByUsername(TARGET_USERNAME).id;
     }
 
+    /**
+     * The target operator logs in and starts MFA enrollment, which stays pending and returns recovery codes.
+     */
     @Test
     @Order(1)
     void targetLoginAndEnrollMfa() {
@@ -76,6 +109,9 @@ class AdminMfaResetApiTest {
         setupKey = enrollmentResponse.jsonPath().getString("setupKey");
     }
 
+    /**
+     * Confirming MFA enrollment with a current code makes the enrollment active.
+     */
     @Test
     @Order(2)
     void targetConfirmsMfaEnrollment() {
@@ -92,6 +128,9 @@ class AdminMfaResetApiTest {
                 .body("mfaStatus", is("active"));
     }
 
+    /**
+     * Password-only login is rejected after MFA enrollment is active.
+     */
     @Test
     @Order(3)
     void targetLoginRequiresMfaBeforeReset() {
@@ -104,6 +143,9 @@ class AdminMfaResetApiTest {
                 .statusCode(401);
     }
 
+    /**
+     * An admin MFA reset clears the target operator's MFA enrollment, pending secret, and recovery codes.
+     */
     @Test
     @Order(4)
     void adminResetsTargetMfa() {
@@ -137,6 +179,9 @@ class AdminMfaResetApiTest {
         org.junit.jupiter.api.Assertions.assertNull(operator.mfaRecoveryCodeHashes);
     }
 
+    /**
+     * After the MFA reset, the target operator can sign in with a password and MFA is disabled.
+     */
     @Test
     @Order(5)
     void targetCanLoginWithoutMfaAfterReset() {

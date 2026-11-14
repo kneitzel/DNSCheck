@@ -14,11 +14,34 @@ import java.util.Locale;
  */
 public class RecordEditor {
 
+    /**
+     * The record name, written as an FQDN or relative to the zone.
+     */
     private String name = "";
+
+    /**
+     * The record type, such as {@code A}.
+     */
     private String type = "";
+
+    /**
+     * The record data. A deletion marker does not store this.
+     */
     private String rdata = "";
+
+    /**
+     * The TTL text. Empty ignores TTL, {@code -1} uses the zone default, and a number is seconds.
+     */
     private String ttl = "";
+
+    /**
+     * The rdata glob pattern used by a deletion marker.
+     */
     private String rdataPattern = "";
+
+    /**
+     * Whether this row stores a deletion marker instead of rdata.
+     */
     private boolean deletionMarker;
 
     /**
@@ -175,6 +198,12 @@ public class RecordEditor {
         this.deletionMarker = deletionMarker;
     }
 
+    /**
+     * Returns the TTL text for a policy: seconds, {@code -1} for the zone default, or empty when TTL is ignored.
+     *
+     * @param policy the TTL policy
+     * @return the text shown in the TTL field
+     */
     private static String ttlText(TtlPolicy policy) {
         if (policy instanceof TtlPolicy.Explicit explicit) {
             return Long.toString(explicit.seconds());
@@ -185,6 +214,13 @@ public class RecordEditor {
         return "";
     }
 
+    /**
+     * Parses TTL text into a policy.
+     *
+     * @param ttl empty, {@code -1}, or a non-negative number of seconds
+     * @return the policy
+     * @throws IllegalArgumentException when the text is not empty, {@code -1}, or an integer
+     */
     private static TtlPolicy ttlPolicy(String ttl) {
         if (ttl == null || ttl.isBlank()) {
             return new TtlPolicy.Ignore();
@@ -197,6 +233,12 @@ public class RecordEditor {
         }
     }
 
+    /**
+     * Returns the trimmed value, or {@code null} when it is null or blank.
+     *
+     * @param value the field text
+     * @return the trimmed value, or {@code null}
+     */
     private static String blankToNull(String value) {
         if (value == null || value.isBlank()) {
             return null;

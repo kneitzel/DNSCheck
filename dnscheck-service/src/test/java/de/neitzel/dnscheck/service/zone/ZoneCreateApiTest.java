@@ -25,18 +25,36 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
 
+/**
+ * Tests creation of zone definitions.
+ */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ZoneCreateApiTest {
 
+    /**
+     * Owner folder of the operator who holds the zone-create global right.
+     */
     private static final String CREATOR_OWNER = "creator.u";
 
+    /**
+     * Service used to create fixture operators and grant the zone-create global right.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Session cookie for the operator who holds the zone-create global right.
+     */
     private static String creatorCookie;
+    /**
+     * Session cookie for an operator without the zone-create global right.
+     */
     private static String readerCookie;
 
+    /**
+     * Creates the creator, grants that operator the zone-create global right, and creates a reader.
+     */
     @Test
     @Order(0)
     @Transactional
@@ -50,6 +68,9 @@ class ZoneCreateApiTest {
         ensureOperator("reader", "reader");
     }
 
+    /**
+     * Creating a zone definition without a session is rejected.
+     */
     @Test
     @Order(1)
     void unauthenticatedCreateIsRejected() {
@@ -66,6 +87,9 @@ class ZoneCreateApiTest {
                 .statusCode(401);
     }
 
+    /**
+     * An operator without the zone-create global right cannot create a zone definition.
+     */
     @Test
     @Order(2)
     void readerCannotCreateZones() {
@@ -84,6 +108,9 @@ class ZoneCreateApiTest {
                 .statusCode(403);
     }
 
+    /**
+     * An operator with the zone-create global right can create a valid zone definition in that operator's owner folder.
+     */
     @Test
     @Order(3)
     void creatorCanCreateZoneDefinition() throws Exception {
@@ -111,6 +138,9 @@ class ZoneCreateApiTest {
         assert Files.isRegularFile(Path.of("target/test-zones/creator.u/brand.new.json"));
     }
 
+    /**
+     * An admin sees the created zone catalog entry.
+     */
     @Test
     @Order(4)
     void adminSeesCreatedZoneInCatalog() {
@@ -124,6 +154,9 @@ class ZoneCreateApiTest {
                 .body("entries.find { it.zone == 'brand.new' && it.ownerFolder == 'creator.u' }.zone", is("brand.new"));
     }
 
+    /**
+     * Creating the same zone definition again is rejected.
+     */
     @Test
     @Order(5)
     void duplicateZoneReturnsConflict() {
@@ -141,6 +174,13 @@ class ZoneCreateApiTest {
                 .statusCode(409);
     }
 
+    /**
+     * Returns the named operator, creating it when it is missing.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the existing or newly created operator.
+     */
     private Operator ensureOperator(String username, String password) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -149,6 +189,13 @@ class ZoneCreateApiTest {
         return operator;
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

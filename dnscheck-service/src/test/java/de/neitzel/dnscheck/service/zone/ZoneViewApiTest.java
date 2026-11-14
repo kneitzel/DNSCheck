@@ -33,22 +33,46 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
 
+/**
+ * Tests the zone view of managed records and the live zone.
+ */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ZoneViewApiTest {
 
+    /**
+     * Owner folder used for the admin's zone definitions.
+     */
     private static final String ADMIN_OWNER = "admin.u";
+    /**
+     * Owner folder used for the reader's zone definition.
+     */
     private static final String READER_OWNER = "reader.u";
 
+    /**
+     * Mock live zone loader that supplies an enforced record and an ad-hoc record.
+     */
     @InjectMock
     LiveZoneLoader liveZoneLoader;
 
+    /**
+     * Service used to create the reader operator.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Session cookie for the admin operator.
+     */
     private static String adminCookie;
+    /**
+     * Session cookie for the operator who owns the reader folder.
+     */
     private static String readerCookie;
 
+    /**
+     * Stubs the live zone with one record that matches a managed record and one ad-hoc record.
+     */
     @BeforeEach
     void stubLiveZone() throws Exception {
         when(liveZoneLoader.load(any(ZoneDefinition.class), any(Path.class)))
@@ -60,6 +84,9 @@ class ZoneViewApiTest {
                                 new DnsRecord("extra.example.com.", "A", "192.0.2.99", 300))));
     }
 
+    /**
+     * Writes zone definitions for the admin and reader owner folders and creates the reader.
+     */
     @Test
     @Order(0)
     @Transactional
@@ -126,6 +153,9 @@ class ZoneViewApiTest {
         ensureOperator("reader", "reader");
     }
 
+    /**
+     * Reading a zone view without a session is rejected.
+     */
     @Test
     @Order(1)
     void unauthenticatedZoneViewIsRejected() {
@@ -136,6 +166,9 @@ class ZoneViewApiTest {
                 .statusCode(401);
     }
 
+    /**
+     * An admin receives a zone view that includes an enforced managed record, an ad-hoc record, and the zone default TTL.
+     */
     @Test
     @Order(2)
     void adminReceivesMergedZoneView() {
@@ -158,6 +191,9 @@ class ZoneViewApiTest {
                 response);
     }
 
+    /**
+     * A reader can read the zone view for a zone in that operator's owner folder.
+     */
     @Test
     @Order(3)
     void readerCanViewOwnedZone() {
@@ -171,6 +207,9 @@ class ZoneViewApiTest {
                 .body("zone", is("example.com"));
     }
 
+    /**
+     * A reader cannot read the zone view for a zone owned by the admin.
+     */
     @Test
     @Order(4)
     void readerIsDeniedUnownedZone() {
@@ -182,6 +221,9 @@ class ZoneViewApiTest {
                 .statusCode(403);
     }
 
+    /**
+     * Reading a zone view for a zone that is not in the owner folder returns not found.
+     */
     @Test
     @Order(5)
     void missingZoneReturnsNotFound() {
@@ -193,6 +235,9 @@ class ZoneViewApiTest {
                 .statusCode(404);
     }
 
+    /**
+     * A failure while loading the live zone returns a bad gateway and the loader's message.
+     */
     @Test
     @Order(6)
     void liveZoneLoadFailureReturnsBadGatewayWithMessage() throws Exception {
@@ -209,6 +254,13 @@ class ZoneViewApiTest {
                 .body("message", is("AXFR failed for zone other.test"));
     }
 
+    /**
+     * Returns the named operator, creating it when it is missing.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the existing or newly created operator.
+     */
     private Operator ensureOperator(String username, String password) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -217,6 +269,13 @@ class ZoneViewApiTest {
         return operator;
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

@@ -25,19 +25,40 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.empty;
 
+/**
+ * Tests listing of the zone catalog.
+ */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ZoneCatalogApiTest {
 
+    /**
+     * Owner folder used for the admin's zone definitions.
+     */
     private static final String ADMIN_OWNER = "admin.u";
+    /**
+     * Owner folder used for the reader's zone definitions.
+     */
     private static final String READER_OWNER = "reader.u";
 
+    /**
+     * Service used to create the reader operator.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Session cookie for the admin operator.
+     */
     private static String adminCookie;
+    /**
+     * Session cookie for the operator who owns the reader folder.
+     */
     private static String readerCookie;
 
+    /**
+     * Writes valid and invalid zone definitions under two owner folders and creates the reader.
+     */
     @Test
     @Order(0)
     @Transactional
@@ -111,6 +132,9 @@ class ZoneCatalogApiTest {
         ensureOperator("reader", "reader");
     }
 
+    /**
+     * Listing the zone catalog without a session is rejected.
+     */
     @Test
     @Order(1)
     void unauthenticatedListingIsRejected() {
@@ -121,6 +145,9 @@ class ZoneCatalogApiTest {
                 .statusCode(401);
     }
 
+    /**
+     * An admin sees every zone catalog entry in both owner folders, including an invalid filename mismatch.
+     */
     @Test
     @Order(2)
     void adminSeesAllCatalogEntries() {
@@ -144,6 +171,9 @@ class ZoneCatalogApiTest {
         OpenApiContractSupport.assertResponseConforms("listZones", Request.Method.GET, "/api/v1/zones", response);
     }
 
+    /**
+     * A reader sees only the zone catalog entries in that operator's owner folder.
+     */
     @Test
     @Order(3)
     void readerSeesOnlyOwnedZones() {
@@ -160,6 +190,9 @@ class ZoneCatalogApiTest {
                 .body("entries.zone", hasItem("example.com"));
     }
 
+    /**
+     * A reader does not see zone catalog entries owned by the admin.
+     */
     @Test
     @Order(4)
     void readerDoesNotSeeUnownedZones() {
@@ -173,6 +206,13 @@ class ZoneCatalogApiTest {
                 .body("entries.zone.findAll { it == 'other.test' }", empty());
     }
 
+    /**
+     * Returns the named operator, creating it when it is missing, and clears that operator's supplemental zone grants.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the operator, with supplemental zone grants removed.
+     */
     private Operator ensureOperator(String username, String password) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -182,6 +222,13 @@ class ZoneCatalogApiTest {
         return operator;
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

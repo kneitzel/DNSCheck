@@ -25,9 +25,15 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.Matchers.hasKey;
 
+/**
+ * Tests which TSIG keys an operator can select and how a missing key affects zone view and reconciliation.
+ */
 @QuarkusTest
 class ZoneKeyPickerApiTest {
 
+    /**
+     * BIND native key file body used as a valid TSIG key.
+     */
     private static final String VALID_KEY = """
             key "picker.example" {
               algorithm hmac-sha256;
@@ -35,11 +41,20 @@ class ZoneKeyPickerApiTest {
             };
             """;
 
+    /**
+     * Service used to create operators and grant the zone-create global right.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Database id of the group whose key files a member can select.
+     */
     private long groupId;
 
+    /**
+     * Clears and recreates the test key directory and the zone catalog.
+     */
     @BeforeEach
     void cleanDirs() throws Exception {
         cleanDir(Path.of("target/test-keys"));
@@ -48,6 +63,9 @@ class ZoneKeyPickerApiTest {
         Files.createDirectories(Path.of("target/test-zones"));
     }
 
+    /**
+     * Creates the owner and member with the zone-create global right, puts the member in the group, and creates an outsider.
+     */
     @BeforeEach
     @Transactional
     void seedOperators() {
@@ -73,6 +91,9 @@ class ZoneKeyPickerApiTest {
         ensureOperator("picker-outsider", "picker-outsider");
     }
 
+    /**
+     * A member sees personal and group keys without download URLs, and an outsider does not see the group key.
+     */
     @Test
     void selectableKeysListOwnAndMemberGroupKeysWithoutDownloadUrls() {
         String adminCookie = login("admin", "admin");
@@ -118,6 +139,9 @@ class ZoneKeyPickerApiTest {
                 .body("keys.displayLabel", not(hasItem("picker-team/shared.picker.key")));
     }
 
+    /**
+     * The missing-key summary lists only keys for zones the operator can read, while an admin sees both missing keys.
+     */
     @Test
     void missingKeySummaryIsScopedToReadableZones() throws Exception {
         String ownerCookie = login("picker-owner", "picker-owner");
@@ -169,6 +193,9 @@ class ZoneKeyPickerApiTest {
                 .body("missing.scopedKeyPath", hasItem("picker-team.g/absent.key"));
     }
 
+    /**
+     * Creating a zone stores the scoped key path, and deleting a TSIG key that a zone definition references is rejected.
+     */
     @Test
     void deleteKeyBlockedWhenReferencedAndZoneCreateStoresScopedKeyFile() throws Exception {
         String ownerCookie = login("picker-owner", "picker-owner");
@@ -209,6 +236,9 @@ class ZoneKeyPickerApiTest {
                 .body("message", org.hamcrest.Matchers.containsString("referenced"));
     }
 
+    /**
+     * Zone view and reconciliation fail when the zone definition's TSIG key file is missing.
+     */
     @Test
     void zoneViewAndReconcileHardErrorWhenKeyMissing() {
         String ownerCookie = login("picker-owner", "picker-owner");
@@ -243,6 +273,11 @@ class ZoneKeyPickerApiTest {
                 .body("scopedKeyPath", is("picker-owner.u/gone.key"));
     }
 
+    /**
+     * Deletes a directory tree when the path is a directory.
+     *
+     * @param dir directory to delete.
+     */
     private static void cleanDir(Path dir) throws Exception {
         if (!Files.isDirectory(dir)) {
             return;
@@ -257,6 +292,13 @@ class ZoneKeyPickerApiTest {
         }
     }
 
+    /**
+     * Returns the named operator, creating it when it is missing.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the existing or newly created operator.
+     */
     private Operator ensureOperator(String username, String password) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -265,6 +307,13 @@ class ZoneKeyPickerApiTest {
         return operator;
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

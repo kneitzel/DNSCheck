@@ -26,21 +26,36 @@ import static org.hamcrest.Matchers.empty;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+/**
+ * Tests supplemental zone grants on one zone catalog entry.
+ */
 @QuarkusTest
 class SupplementalZoneGrantsApiTest {
 
+    /**
+     * Mock live zone loader that returns an empty live zone.
+     */
     @InjectMock
     LiveZoneLoader liveZoneLoader;
 
+    /**
+     * Service used to create the owner, collaborator, and other operator.
+     */
     @Inject
     OperatorAuthService operatorAuthService;
 
+    /**
+     * Stubs live zone loading with an empty record set.
+     */
     @BeforeEach
     void stubLiveZone() throws Exception {
         when(liveZoneLoader.load(any(ZoneDefinition.class), any(Path.class)))
                 .thenReturn(new LiveZone("shared.example", 3600, List.of()));
     }
 
+    /**
+     * Creates the operators, clears the collaborator's supplemental zone grants, and writes the same DNS zone under two owner folders.
+     */
     @BeforeEach
     @Transactional
     void seedOperatorsAndZones() throws Exception {
@@ -63,6 +78,11 @@ class SupplementalZoneGrantsApiTest {
         writeKey(keysDir.resolve("grant-other.u/shared.example.key"));
     }
 
+    /**
+     * Removes every supplemental zone grant held by the operator.
+     *
+     * @param username operator whose grants are removed.
+     */
     private void deleteGrantsFor(String username) {
         Operator operator = Operator.findByUsername(username);
         if (operator != null) {
@@ -70,6 +90,9 @@ class SupplementalZoneGrantsApiTest {
         }
     }
 
+    /**
+     * A collaborator with a supplemental read zone right can read the owner's zone view and sees that catalog entry.
+     */
     @Test
     void collaboratorWithSupplementalReadCanViewOwnersPersonalZone() {
         String adminCookie = login("admin", "admin");
@@ -108,6 +131,9 @@ class SupplementalZoneGrantsApiTest {
                 .body("entries.findAll { it.ownerFolder == 'grant-owner.u' && it.zone == 'shared.example' }.size()", is(1));
     }
 
+    /**
+     * A supplemental zone grant for one owner folder does not allow the same DNS zone name under another owner.
+     */
     @Test
     void supplementalGrantDoesNotApplyToSameDnsNameUnderDifferentOwner() {
         String adminCookie = login("admin", "admin");
@@ -145,6 +171,9 @@ class SupplementalZoneGrantsApiTest {
                         empty());
     }
 
+    /**
+     * A collaborator with a supplemental write zone right can dry-run reconciliation for that zone catalog entry.
+     */
     @Test
     void collaboratorWithSupplementalWriteCanReconcile() {
         String adminCookie = login("admin", "admin");
@@ -174,6 +203,9 @@ class SupplementalZoneGrantsApiTest {
                 .body("zoneOutcomes.zone", hasItem("grant-owner.u/shared.example"));
     }
 
+    /**
+     * Creating a supplemental zone grant without an owner folder is rejected.
+     */
     @Test
     void createZoneGrantRequiresOwnerFolder() {
         String adminCookie = login("admin", "admin");
@@ -189,6 +221,13 @@ class SupplementalZoneGrantsApiTest {
                 .statusCode(400);
     }
 
+    /**
+     * Returns the named operator, creating it when it is missing.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the existing or newly created operator.
+     */
     private Operator ensureOperator(String username, String password) {
         Operator operator = Operator.findByUsername(username);
         if (operator == null) {
@@ -197,6 +236,13 @@ class SupplementalZoneGrantsApiTest {
         return operator;
     }
 
+    /**
+     * Writes an empty zone definition.
+     *
+     * @param path zone definition file to write.
+     * @param zone zone name stored in the file.
+     * @param ownerFolder owner folder referenced by the key file path.
+     */
     private static void writeZone(Path path, String zone, String ownerFolder) throws Exception {
         Files.writeString(
                 path,
@@ -210,6 +256,11 @@ class SupplementalZoneGrantsApiTest {
                 """.formatted(zone, zone, ownerFolder, zone));
     }
 
+    /**
+     * Writes a TSIG key file fixture.
+     *
+     * @param path key file to write.
+     */
     private static void writeKey(Path path) throws Exception {
         Files.writeString(
                 path,
@@ -221,6 +272,13 @@ class SupplementalZoneGrantsApiTest {
                 """);
     }
 
+    /**
+     * Logs in and returns the session cookie.
+     *
+     * @param username operator username.
+     * @param password operator password.
+     * @return the session cookie value.
+     */
     private static String login(String username, String password) {
         return given()
                 .contentType(ContentType.JSON)

@@ -9,18 +9,47 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+/**
+ * Creates a new zone definition file with no managed records.
+ */
 public final class ZoneDefinitionCreator {
 
+    /**
+     * Writes the new zone definition.
+     */
     private final ZoneDefinitionStore store;
 
+    /**
+     * Creates a creator that uses a new zone definition store.
+     */
     public ZoneDefinitionCreator() {
         this(new ZoneDefinitionStore());
     }
 
+    /**
+     * Creates a creator that writes through {@code store}.
+     *
+     * @param store the store that writes the zone definition file.
+     */
     ZoneDefinitionCreator(ZoneDefinitionStore store) {
         this.store = store;
     }
 
+    /**
+     * Creates {@code {owner}/{zone}.json} under the zone catalog.
+     * The file starts with the nameserver, the key file, and an empty record list.
+     *
+     * @param zonesDirectory the zone catalog root.
+     * @param ownerFolder the owner folder that will contain the zone definition.
+     * @param zone the DNS zone name. It becomes the file name.
+     * @param nameserver the authoritative nameserver to contact.
+     * @param keyFile the scoped path of the TSIG key file.
+     * @return the catalog entry for the new file.
+     * @throws IllegalArgumentException when the owner folder, zone, nameserver, or key file is blank,
+     *                                  or the owner folder or zone name is not safe.
+     * @throws IOException when the catalog directory is missing or the file cannot be written.
+     * @throws ZoneAlreadyExistsException when that catalog entry already exists.
+     */
     public ZoneCatalogEntry create(
             Path zonesDirectory, String ownerFolder, String zone, String nameserver, String keyFile)
             throws IOException {
