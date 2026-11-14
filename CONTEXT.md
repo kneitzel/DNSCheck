@@ -27,7 +27,7 @@ An operator action that abandons a *pending* MFA enrollment, clearing the pendin
 _Avoid_: Abort setup, undo MFA, discard enrollment
 
 **DNSCheck**:
-The reconciliation tool itself — checks live DNS against expected records and repairs mismatches. Delivered as a core library, a Quarkus service with UI, and a CLI for direct operator use.
+The reconciliation tool itself — checks live DNS against expected records and repairs mismatches. Delivered as a core library, a Quarkus service with UI, a CLI, and a JavaFX desktop application for direct operator use. The CLI and desktop use local files and TSIG keys directly; service authentication and rights apply only through the service API.
 _Avoid_: Monitor, sync agent, DNS bot
 
 **Expected record**:

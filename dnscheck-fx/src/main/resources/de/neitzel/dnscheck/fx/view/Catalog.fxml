@@ -2,7 +2,6 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
@@ -10,7 +9,9 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import de.neitzel.fx.view.BindingList?>
+<?import de.neitzel.fx.view.Column?>
 <?import de.neitzel.fx.view.DirectBinding?>
+<?import de.neitzel.fx.view.Table?>
 
 <BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
             fx:controller="de.neitzel.dnscheck.fx.view.CatalogController"
@@ -22,8 +23,7 @@
         <BindingList>
             <DirectBinding control="zonesField" property="text" path="zonesDirectory" direction="both"/>
             <DirectBinding control="keysField" property="text" path="keysDirectory" direction="both"/>
-            <DirectBinding control="entries" property="items" path="entries" direction="view"/>
-            <DirectBinding control="entries" property="value" path="selected" direction="both"/>
+            <DirectBinding control="entriesTable" property="selection" path="selected" direction="both"/>
             <DirectBinding control="noticeLabel" property="text" path="latestMessage" direction="view"/>
             <DirectBinding control="outcomeArea" property="text" path="outcome" direction="view"/>
         </BindingList>
@@ -38,8 +38,16 @@
                 <TextField fx:id="keysField" HBox.hgrow="ALWAYS"/>
                 <Button text="Reload" onAction="#reload"/>
             </HBox>
+            <Table fx:id="entriesTable" id="entriesTable" collection="entries"
+                   row="de.neitzel.dnscheck.fx.view.CatalogRow" prefHeight="180" maxWidth="Infinity">
+                <Column header="Owner" attribute="ownerFolder" width="140"/>
+                <Column header="Zone" attribute="zone" width="180"/>
+                <Column header="Nameserver" attribute="nameserver" width="200"/>
+                <Column header="Key file" attribute="keyFile" width="220"/>
+                <Column header="Valid" attribute="valid" width="80"/>
+                <Column header="Error" attribute="error" width="180"/>
+            </Table>
             <HBox spacing="8">
-                <ComboBox fx:id="entries" promptText="Catalog entry" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
                 <Button text="Open" onAction="#open"/>
                 <Button text="Dry-run file" onAction="#dryRun"/>
                 <Button text="Reconcile file" onAction="#reconcile"/>

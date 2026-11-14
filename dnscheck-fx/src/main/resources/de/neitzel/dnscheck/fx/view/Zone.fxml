@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.ColumnConstraints?>
@@ -11,8 +9,9 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import de.neitzel.fx.view.BindingList?>
+<?import de.neitzel.fx.view.Column?>
 <?import de.neitzel.fx.view.DirectBinding?>
-<?import de.neitzel.fx.view.Repeat?>
+<?import de.neitzel.fx.view.Table?>
 
 <VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
       fx:controller="de.neitzel.dnscheck.fx.view.ZoneController" spacing="8">
@@ -22,7 +21,6 @@
             <DirectBinding control="zoneLabel" property="text" path="zone" direction="view"/>
             <DirectBinding control="nameserverField" property="text" path="nameserver" direction="both"/>
             <DirectBinding control="keyFileField" property="text" path="keyFile" direction="both"/>
-            <Repeat pane="recordPane" component="de.neitzel.dnscheck.fx.view.RecordForm" collection="records"/>
             <DirectBinding control="noticeLabel" property="text" path="latestMessage" direction="view"/>
             <DirectBinding control="outcomeArea" property="text" path="outcome" direction="view"/>
         </BindingList>
@@ -43,19 +41,17 @@
     </GridPane>
     <Label text="Records" wrapText="true"/>
     <Label wrapText="true"
-           text="Name, type, rdata, TTL (empty ignores TTL, -1 uses the zone default), pattern. Delete stores a deletion marker and ignores rdata."/>
-    <HBox spacing="6">
-        <Label text="Name" prefWidth="160" minWidth="160"/>
-        <Label text="Type" prefWidth="70" minWidth="70"/>
-        <Label text="Rdata" prefWidth="200" minWidth="200"/>
-        <Label text="TTL" prefWidth="80" minWidth="80"/>
-        <Label text="Pattern" prefWidth="120" minWidth="120"/>
-    </HBox>
-    <ScrollPane fitToWidth="true" prefHeight="240" VBox.vgrow="ALWAYS">
-        <content>
-            <VBox fx:id="recordPane" spacing="4"/>
-        </content>
-    </ScrollPane>
+           text="Name, type, rdata, TTL (empty ignores TTL, -1 uses the zone default), pattern. Delete stores a deletion marker and ignores rdata. A column header sorts; its arrow filters."/>
+    <Table fx:id="recordTable" id="recordTable" collection="records"
+           row="de.neitzel.dnscheck.fx.view.RecordForm"
+           prefHeight="240" maxHeight="Infinity" VBox.vgrow="ALWAYS">
+        <Column header="Name" attribute="name" width="160"/>
+        <Column header="Type" attribute="type" width="80"/>
+        <Column header="Rdata" attribute="rdata" width="220"/>
+        <Column header="TTL" attribute="ttl" width="90"/>
+        <Column header="Pattern" attribute="rdataPattern" width="140"/>
+        <Column header="Delete" attribute="deletionMarker" width="80"/>
+    </Table>
     <HBox spacing="8">
         <Button text="Add record" onAction="#addRecord"/>
         <Button text="Save" onAction="#save"/>

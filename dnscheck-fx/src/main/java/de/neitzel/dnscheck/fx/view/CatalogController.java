@@ -85,7 +85,9 @@ public class CatalogController implements HasViewModel {
     @FXML
     public void reload() {
         try {
-            List<CatalogEntryModel> loaded = zoneFiles.load(Path.of(desk.catalog().getZonesDirectory()));
+            Desk.CatalogDirectories directories = desk.requestedDirectories();
+            List<CatalogEntryModel> loaded = zoneFiles.load(directories.zones());
+            desk.catalogLoaded(directories);
             entries().clear();
             entries().addAll(loaded);
             Attributes.set(viewModel, "selected", null);
@@ -112,7 +114,7 @@ public class CatalogController implements HasViewModel {
             return;
         }
         try {
-            var editor = zoneFiles.open(Path.of(desk.catalog().getZonesDirectory()), selected);
+            var editor = zoneFiles.open(desk.requireLoadedDirectories().zones(), selected);
             desk.edit(editor);
             LoadedView zoneView = ViewLoader.load(
                     ZoneController.class.getResource("Zone.fxml"), editor, desk.context());
@@ -153,10 +155,17 @@ public class CatalogController implements HasViewModel {
             note(Message.Severity.WARN, "A reconciliation run is already going.", "reconcile");
             return;
         }
+        Desk.CatalogDirectories directories;
+        try {
+            directories = desk.requireLoadedDirectories();
+        } catch (RuntimeException failure) {
+            note(Message.Severity.ERROR, text(failure), "reconcile");
+            return;
+        }
         busy = true;
         Attributes.set(viewModel, "outcome", dryRun ? "Dry-run…" : "Reconciling…");
-        Path zones = Path.of(desk.catalog().getZonesDirectory());
-        Path keys = Path.of(desk.catalog().getKeysDirectory());
+        Path zones = directories.zones();
+        Path keys = directories.keys();
         String owner = selected.getOwnerFolder();
         String zone = selected.getZone();
         Thread.startVirtualThread(() -> finish(reconcile(zones, keys, owner, zone, dryRun)));

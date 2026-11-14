@@ -6,6 +6,8 @@ import de.neitzel.fx.view.ViewModel;
 import de.neitzel.injection.ApplicationContext;
 import jakarta.inject.Singleton;
 
+import java.nio.file.Path;
+
 /**
  * Holds the catalog Model, the zone Model currently open, and the container that loads Views.
  */
@@ -31,6 +33,31 @@ public class Desk {
      * The ViewModel of the catalog View, or {@code null} before that View has loaded.
      */
     private ViewModel catalogView;
+
+    private CatalogDirectories loadedDirectories;
+
+    /** Directory pair applied by the last successful catalog reload. */
+    public record CatalogDirectories(Path zones, Path keys) {}
+
+    /** Captures both fields before loading; parsing failures leave the loaded context intact. */
+    public CatalogDirectories requestedDirectories() {
+        return new CatalogDirectories(
+                Path.of(catalog.getZonesDirectory()).toAbsolutePath().normalize(),
+                Path.of(catalog.getKeysDirectory()).toAbsolutePath().normalize());
+    }
+
+    /** Applies the directory pair only after its catalog has been read successfully. */
+    public void catalogLoaded(CatalogDirectories directories) {
+        loadedDirectories = directories;
+    }
+
+    /** Prevents a displayed entry or editor from being used against unapplied directory fields. */
+    public CatalogDirectories requireLoadedDirectories() {
+        if (loadedDirectories == null || !loadedDirectories.equals(requestedDirectories())) {
+            throw new IllegalStateException("Reload the catalog before using changed directories.");
+        }
+        return loadedDirectories;
+    }
 
     /**
      * Creates an empty desk. The container calls this constructor.

@@ -5,6 +5,7 @@ COPY pom.xml .
 COPY dnscheck-core/pom.xml dnscheck-core/
 COPY dnscheck-service/pom.xml dnscheck-service/
 COPY dnscheck-cli/pom.xml dnscheck-cli/
+COPY dnscheck-fx/pom.xml dnscheck-fx/
 
 RUN mvn -B -pl dnscheck-service,dnscheck-cli -am dependency:go-offline
 

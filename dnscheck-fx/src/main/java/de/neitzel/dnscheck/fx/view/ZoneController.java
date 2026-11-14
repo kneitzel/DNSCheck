@@ -114,6 +114,13 @@ public class ZoneController implements HasViewModel {
                     Message.Severity.WARN, "A reconciliation run is already going.", "reconcile"));
             return;
         }
+        Desk.CatalogDirectories directories;
+        try {
+            directories = desk.requireLoadedDirectories();
+        } catch (RuntimeException failure) {
+            viewModel.addMessage(new Message(Message.Severity.ERROR, failure.getMessage(), "reconcile"));
+            return;
+        }
         if (!write()) {
             return;
         }
@@ -121,8 +128,8 @@ public class ZoneController implements HasViewModel {
         ZoneEditor editor = desk.zone();
         ViewModel target = viewModel;
         Attributes.set(target, "outcome", dryRun ? "Dry-run…" : "Reconciling…");
-        Path zones = Path.of(desk.catalog().getZonesDirectory());
-        Path keys = Path.of(desk.catalog().getKeysDirectory());
+        Path zones = directories.zones();
+        Path keys = directories.keys();
         Thread.startVirtualThread(() -> {
             ZoneReconciliationResult result = reconcile(zones, keys, editor, dryRun);
             Platform.runLater(() -> finish(editor, target, result));

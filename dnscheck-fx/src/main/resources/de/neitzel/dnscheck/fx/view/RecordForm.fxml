@@ -18,11 +18,11 @@
             <DirectBinding control="deleteBox" property="selected" path="deletionMarker" direction="both"/>
         </BindingList>
     </fx:define>
-    <TextField fx:id="nameField" promptText="Name" prefWidth="160" minWidth="160"/>
-    <TextField fx:id="typeField" promptText="Type" prefWidth="70" minWidth="70"/>
-    <TextField fx:id="rdataField" promptText="Rdata" prefWidth="200" minWidth="200"/>
-    <TextField fx:id="ttlField" promptText="TTL" prefWidth="80" minWidth="80"/>
-    <TextField fx:id="patternField" promptText="Pattern" prefWidth="120" minWidth="120"/>
-    <CheckBox fx:id="deleteBox" text="Delete"/>
+    <TextField fx:id="nameField" promptText="Name"/>
+    <TextField fx:id="typeField" promptText="Type"/>
+    <TextField fx:id="rdataField" promptText="Rdata"/>
+    <TextField fx:id="ttlField" promptText="TTL"/>
+    <TextField fx:id="patternField" promptText="Pattern"/>
+    <CheckBox fx:id="deleteBox"/>
     <Button text="Remove" onAction="#remove"/>
 </fx:root>

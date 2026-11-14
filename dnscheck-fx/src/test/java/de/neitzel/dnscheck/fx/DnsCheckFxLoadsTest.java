@@ -12,8 +12,12 @@ import de.neitzel.injection.ApplicationContext;
 import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.Parent;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -65,6 +69,10 @@ class DnsCheckFxLoadsTest {
             LoadedView catalog = ViewLoader.load(
                     CatalogController.class.getResource("Catalog.fxml"), session, context);
             assertTrue(catalog.getViewModel().getLatestMessage().getText().contains("does not exist"));
+            assertEquals("Owner", headerText(catalog.getRoot(), "entriesTable", 0));
+            assertEquals("Zone", headerText(catalog.getRoot(), "entriesTable", 1));
+            assertEquals("Valid", headerText(catalog.getRoot(), "entriesTable", 4));
+            assertEquals(140, headerCell(catalog.getRoot(), "entriesTable", 0).getPrefWidth());
 
             ZoneEditor editor = new ZoneEditor();
             editor.setOwnerFolder("admin.u");
@@ -82,9 +90,91 @@ class DnsCheckFxLoadsTest {
 
             LoadedView zone = ViewLoader.load(ZoneController.class.getResource("Zone.fxml"), editor, context);
             assertEquals(1, count(zone.getRoot(), RecordForm.class));
+            assertEquals("Name", headerText(zone.getRoot(), "recordTable", 0));
+            assertEquals("Delete", headerText(zone.getRoot(), "recordTable", 5));
+            assertEquals(160, headerCell(zone.getRoot(), "recordTable", 0).getPrefWidth());
             assertEquals("ns1.example.com", text(zone.getRoot(), "ns1.example.com"));
             assertEquals("192.0.2.10", text(zone.getRoot(), "192.0.2.10"));
+
+            RecordForm row = record(zone.getRoot());
+            Button remove = (Button) row.getChildren().get(row.getChildren().size() - 1);
+            assertEquals("Remove", remove.getText());
+            assertEquals(Region.USE_COMPUTED_SIZE, remove.getPrefWidth());
+            remove.fire();
+            assertEquals(0, editor.getRecords().size());
+            assertEquals(0, count(zone.getRoot(), RecordForm.class));
         });
+    }
+
+    /**
+     * Returns the header text of one column.
+     *
+     * @param root    the loaded view
+     * @param tableId the table id
+     * @param index   the column index
+     * @return the header text
+     */
+    private static String headerText(Parent root, String tableId, int index) {
+        Label label = (Label) headerCell(root, tableId, index).lookup(".column-header");
+        return label.getText();
+    }
+
+    /**
+     * Returns one header cell.
+     *
+     * @param root    the loaded view
+     * @param tableId the table id
+     * @param index   the column index
+     * @return the cell
+     */
+    private static Region headerCell(Parent root, String tableId, int index) {
+        ScrollPane headerScroll = (ScrollPane) root.lookup("#" + tableId).lookup(".table-header-scroll");
+        HBox header = (HBox) headerScroll.getContent();
+        return (Region) header.getChildren().get(index);
+    }
+
+    /**
+     * Returns the record row.
+     *
+     * @param root the loaded zone view
+     * @return the row
+     */
+    private static RecordForm record(Parent root) {
+        RecordForm found = findRecord(root);
+        if (found == null) {
+            fail("record row was not loaded");
+        }
+        return found;
+    }
+
+    /**
+     * Finds the record row under a node.
+     *
+     * @param node the node
+     * @return the row, or {@code null}
+     */
+    private static RecordForm findRecord(Node node) {
+        if (node instanceof RecordForm row) {
+            return row;
+        }
+        if (node instanceof ScrollPane scroll && scroll.getContent() != null) {
+            RecordForm found = findRecord(scroll.getContent());
+            if (found != null) {
+                return found;
+            }
+        }
+        if (node instanceof Parent parent) {
+            for (Node child : parent.getChildrenUnmodifiable()) {
+                if (node instanceof ScrollPane scroll && child == scroll.getContent()) {
+                    continue;
+                }
+                RecordForm found = findRecord(child);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     /**
