@@ -1,8 +1,10 @@
 # Migrating to scoped ownership
 
-DNSCheck stores zone definitions and TSIG keys under **owner folders**: `{username}.u` for operators and `{groupname}.g` for groups. There is **no automated migration** from the older flat layout. Use this guide to move files by hand and update references.
+The DNSCheck service stores zone definitions and TSIG keys under **owner folders**: `{username}.u` for operators and `{groupname}.g` for groups. There is **no automated migration** from the older flat layout. Use this guide to move files by hand and update references.
 
 Terms match [CONTEXT.md](../CONTEXT.md) (owner folder, zone catalog entry, supplemental zone grant).
+
+This guide applies to the service. CLI and FX now use the [local directory format](cli.md) instead.
 
 ## Target layout
 

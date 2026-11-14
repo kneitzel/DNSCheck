@@ -57,11 +57,21 @@ public final class LiveZoneClient {
      */
     @SuppressWarnings("unchecked")
     public LiveZone load(String zone, String nameserver, TsigKey tsigKey) throws IOException {
+        return load(zone, nameserver, tsigKey, false);
+    }
+
+    /** Desktop inspection includes the SOA record and bounds the transfer wait. */
+    public LiveZone loadIncludingSoa(String zone, String nameserver, TsigKey tsigKey) throws IOException {
+        return load(zone, nameserver, tsigKey, true);
+    }
+
+    private LiveZone load(String zone, String nameserver, TsigKey tsigKey, boolean includeSoa) throws IOException {
         Name zoneName = nameNormalizer.toDnsName(ensureTrailingDot(zone));
         ZoneTransferIn transfer = ZoneTransferIn.newAXFR(
                 zoneName,
                 nameserver,
                 resolveTsig(tsigKey));
+        if (includeSoa) transfer.setTimeout(java.time.Duration.ofSeconds(15));
         try {
             transfer.run();
         } catch (ZoneTransferException e) {
@@ -70,6 +80,10 @@ public final class LiveZoneClient {
         List<Record> axfrRecords = transfer.getAXFR();
         Zone dnsZone = new Zone(zoneName, axfrRecords.toArray(Record[]::new));
         long defaultTtl = extractDefaultTtl(dnsZone);
+        if (includeSoa) {
+            // Preserve all AXFR records, including RRSIGs; the closing SOA repeats the opening SOA.
+            return new LiveZone(zone, defaultTtl, axfrRecords.stream().distinct().map(this::toDnsRecord).toList());
+        }
         List<DnsRecord> records = new ArrayList<>();
         for (RRset rrset : dnsZone) {
             for (Record record : rrset.rrs()) {

@@ -1,0 +1,9 @@
+.table-row-cell:file-entry { -fx-background-color: #e6f0fc; }
+.table-row-cell:removal-entry { -fx-background-color: #fbe8e4; }
+.table-row-cell:live-entry { -fx-background-color: #e3f3e9; }
+.table-row-cell:selected { -fx-background-color: #285a89; }
+.table-row-cell .table-cell { -fx-text-fill: #17212b; }
+.table-row-cell:selected .table-cell { -fx-text-fill: white; }
+.file-legend { -fx-text-fill: #225482; }
+.removal-legend { -fx-text-fill: #9c342b; }
+.live-legend { -fx-text-fill: #226540; }

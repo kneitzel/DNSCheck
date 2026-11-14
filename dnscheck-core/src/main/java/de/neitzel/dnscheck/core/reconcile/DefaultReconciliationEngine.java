@@ -171,9 +171,23 @@ public final class DefaultReconciliationEngine implements ReconciliationEngine {
     private ZoneReconciliationResult reconcileDefinition(ZoneDefinition definition, boolean dryRun)
             throws IOException {
         String catalogRef = catalogRefFor(definition);
+        try {
+            return reconcileDefinition(definition, keyFileParser.parse(resolveKeyFile(definition.keyFile())),
+                    dryRun, catalogRef);
+        } catch (Exception e) {
+            return ZoneReconciliationResult.failed(catalogRef, e.getMessage());
+        }
+    }
+
+    /** Reconciles a local definition with an already validated key and a bare zone identity. */
+    public ZoneReconciliationResult reconcileDefinition(ZoneDefinition definition, TsigKey key, boolean dryRun) {
+        return reconcileDefinition(definition, key, dryRun, definition.zone());
+    }
+
+    private ZoneReconciliationResult reconcileDefinition(
+            ZoneDefinition definition, TsigKey tsigKey, boolean dryRun, String catalogRef) {
         String zone = definition.zone();
         try {
-            TsigKey tsigKey = keyFileParser.parse(resolveKeyFile(definition.keyFile()));
             var liveZone = liveZoneClient.load(zone, definition.nameserver(), tsigKey);
             List<PlannedChange> changes = driftDetector.detect(definition, liveZone);
             List<String> descriptions = changes.stream().map(PlannedChange::describe).toList();

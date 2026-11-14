@@ -22,7 +22,7 @@ In addition to the Unlicense terms:
 
 ---
 
-DNSCheck verifies live DNS against zone definition JSON files and reconciles drift via BIND `nsupdate`. It ships as a **Quarkus service** (web UI, REST API, scheduled reconciliation), a **CLI** for ad-hoc or cron-based runs, and a **JavaFX desktop** application for the same zone catalog.
+DNSCheck verifies live DNS against zone definition JSON files and reconciles drift via BIND `nsupdate`. It ships as a **Quarkus service** (web UI, REST API, scheduled reconciliation), a **CLI** for ad-hoc or cron-based runs, and a **JavaFX desktop** application for local directories of definitions and colocated keys.
 
 See [CONTEXT.md](CONTEXT.md) for domain terminology.
 
@@ -69,7 +69,7 @@ See [CONTEXT.md](CONTEXT.md) for domain terminology.
 | [Configure](docs/configure.md) | Infrastructure operators — properties, env vars, database, scoped layout |
 | [Migrating to scoped ownership](docs/migration-scoped-ownership.md) | Operators upgrading from flat `zones/` / `keys/` layouts |
 | [Operator guide](docs/operator-guide.md) | DNS operators — web UI workflows |
-| [CLI](docs/cli.md) | Automation — `dnscheck reconcile owner/zoneName`, cron, Docker |
+| [CLI](docs/cli.md) | Automation — `dnscheck reconcile ZONE --directory PATH`, cron, Docker |
 | [Desktop](dnscheck-fx/README.md) | JavaFX — edit zone definitions and reconcile one catalog entry |
 
 API contract: `GET /api/v1/openapi.json` (Swagger UI available in dev profile only).
@@ -86,5 +86,5 @@ API contract: `GET /api/v1/openapi.json` (Swagger UI available in dev profile on
 ## Typical deployment
 
 - Run the **service** as the always-on control plane (Docker Compose or systemd).
-- Use the **CLI** on the same host or a jump box for ad-hoc or supplementary cron jobs against the same `zones/` and `keys/` directories.
-- Avoid running the service scheduler and a CLI cron on the same interval without reason — both read the same zone catalog.
+- Use the **CLI** on the same host or a jump box for ad-hoc or supplementary cron jobs against a local directory of `.domain` definitions and colocated keys (see [CLI](docs/cli.md)).
+- Avoid running the service scheduler and a CLI cron on the same interval without reason — both may update the same live zones.

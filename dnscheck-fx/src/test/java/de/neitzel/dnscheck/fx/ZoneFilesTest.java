@@ -32,14 +32,18 @@ class ZoneFilesTest {
     @Test
     void saveWritesEditedRdataTtlAndADeletionMarker() throws Exception {
         Path zones = temp.resolve("zones");
-        Path owner = zones.resolve("admin.u");
+        Path owner = zones;
         Files.createDirectories(owner);
-        Path file = owner.resolve("example.com.json");
+        Files.writeString(owner.resolve("dnscheck.key"),
+                """
+                key "test" { algorithm hmac-sha256; secret "dGVzdA=="; };
+                """);
+        Path file = owner.resolve("example.com.domain");
         Files.writeString(file, """
                 {
                   "zone": "example.com",
                   "nameserver": "ns1.example.com",
-                  "keyFile": "admin.u/example.com.key",
+                  "keyFile": "dnscheck.key",
                   "records": [
                     { "name": "mail", "type": "A", "rdata": "192.0.2.10" }
                   ]
@@ -49,7 +53,7 @@ class ZoneFilesTest {
         ZoneFiles files = new ZoneFiles();
         var entries = files.load(zones);
         assertEquals(1, entries.size());
-        assertEquals("admin.u/example.com", entries.get(0).getCatalogRef());
+        assertEquals("example.com", entries.get(0).getCatalogRef());
         assertTrue(entries.get(0).isValid());
 
         var editor = files.open(zones, entries.get(0));
@@ -65,7 +69,7 @@ class ZoneFilesTest {
         editor.getRecords().add(marker);
         files.save(editor);
 
-        ZoneDefinition definition = new ZoneDefinitionStore().read(file);
+        ZoneDefinition definition = ZoneDefinitionStore.localDirectoryStore().read(file);
         assertEquals("192.0.2.11", definition.records().get(0).rdata());
         assertInstanceOf(TtlPolicy.Explicit.class, definition.records().get(0).ttlPolicy());
         assertEquals(300L, ((TtlPolicy.Explicit) definition.records().get(0).ttlPolicy()).seconds());
@@ -79,14 +83,18 @@ class ZoneFilesTest {
     @Test
     void saveRejectsATtlThatIsNotANumber() throws Exception {
         Path zones = temp.resolve("zones");
-        Path owner = zones.resolve("admin.u");
+        Path owner = zones;
         Files.createDirectories(owner);
-        Path file = owner.resolve("example.com.json");
+        Files.writeString(owner.resolve("dnscheck.key"),
+                """
+                key "test" { algorithm hmac-sha256; secret "dGVzdA=="; };
+                """);
+        Path file = owner.resolve("example.com.domain");
         Files.writeString(file, """
                 {
                   "zone": "example.com",
                   "nameserver": "ns1.example.com",
-                  "keyFile": "admin.u/example.com.key",
+                  "keyFile": "dnscheck.key",
                   "records": [
                     { "name": "mail", "type": "A", "rdata": "192.0.2.10", "ttl": -1 }
                   ]

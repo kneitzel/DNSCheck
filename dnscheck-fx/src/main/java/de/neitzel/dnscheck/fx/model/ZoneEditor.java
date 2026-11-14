@@ -2,87 +2,65 @@ package de.neitzel.dnscheck.fx.model;
 
 import de.neitzel.dnscheck.core.model.RecordSpec;
 import de.neitzel.dnscheck.core.model.ZoneDefinition;
-
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * One zone definition open for editing.
- * <p>
- * The zone name and owner folder come from the catalog entry. Nameserver, key file, and records
- * are edited in the View and written through to this Model.
- */
+/** A local definition being edited. The original source path is retained on save. */
+@Getter
+@Setter
 public class ZoneEditor {
-
-    /**
-     * The owner folder that holds the zone file.
-     */
-    private String ownerFolder = "";
-
-    /**
-     * The zone name. It stays the file name and is not edited.
-     */
     private String zone = "";
-
-    /**
-     * The nameserver edited in the View.
-     */
     private String nameserver = "";
-
-    /**
-     * The key file edited in the View.
-     */
     private String keyFile = "";
-
-    /**
-     * The path of the zone definition file this editor was loaded from.
-     */
     private String sourcePath = "";
-
-    /**
-     * The records edited in the View. After the View loads, this is the list the table watches.
-     */
     private List<RecordEditor> records = new ArrayList<>();
-
-    /**
-     * The outcome text shown under the zone.
-     */
     private String outcome = "";
+    private boolean applying;
+    @Setter(AccessLevel.NONE)
+    private ZoneDefinition diskDefinition;
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    private ZoneDefinition savedDefinition;
 
-    /**
-     * Creates an empty zone editor.
-     */
-    public ZoneEditor() {
-    }
-
-    /**
-     * Copies a zone definition into an editor.
-     *
-     * @param ownerFolder the owner folder that holds the file
-     * @param definition  the zone definition
-     * @return the editor
-     */
-    public static ZoneEditor from(String ownerFolder, ZoneDefinition definition) {
+    public static ZoneEditor from(ZoneDefinition definition) {
         ZoneEditor editor = new ZoneEditor();
-        editor.setOwnerFolder(ownerFolder);
         editor.setZone(definition.zone());
         editor.setNameserver(definition.nameserver());
         editor.setKeyFile(definition.keyFile());
         editor.setSourcePath(definition.sourcePath().toString());
-        List<RecordEditor> rows = new ArrayList<>();
-        for (RecordSpec record : definition.records()) {
-            rows.add(RecordEditor.from(record));
-        }
-        editor.setRecords(rows);
+        editor.setRecords(new ArrayList<>(definition.records().stream().map(RecordEditor::from).toList()));
+        editor.markSaved();
+        editor.diskDefinition = definition;
         return editor;
     }
 
-    /**
-     * Returns the zone definition this editor would write.
-     *
-     * @return the zone definition
-     */
+    public void markSaved() {
+        savedDefinition = toDefinition();
+        diskDefinition = savedDefinition;
+    }
+
+    /** Accept a completed record operation without replacing the editor's ViewModel identity. */
+    public void acceptDefinition(ZoneDefinition definition) {
+        nameserver = definition.nameserver();
+        keyFile = definition.keyFile();
+        records.clear();
+        definition.records().stream().map(RecordEditor::from).forEach(records::add);
+        markSaved();
+        diskDefinition = definition;
+    }
+
+    public boolean isDirty() {
+        try {
+            return !toDefinition().equals(savedDefinition);
+        } catch (RuntimeException invalidEdits) {
+            return true;
+        }
+    }
+
     public ZoneDefinition toDefinition() {
         String server = nameserver == null ? "" : nameserver.trim();
         String key = keyFile == null ? "" : keyFile.trim();
@@ -100,131 +78,4 @@ public class ZoneEditor {
         return new ZoneDefinition(zone, server, key, specs, Path.of(sourcePath));
     }
 
-    /**
-     * Returns the owner folder.
-     *
-     * @return the owner folder
-     */
-    public String getOwnerFolder() {
-        return ownerFolder;
-    }
-
-    /**
-     * Sets the owner folder.
-     *
-     * @param ownerFolder the owner folder
-     */
-    public void setOwnerFolder(String ownerFolder) {
-        this.ownerFolder = ownerFolder;
-    }
-
-    /**
-     * Returns the zone name.
-     *
-     * @return the zone name
-     */
-    public String getZone() {
-        return zone;
-    }
-
-    /**
-     * Sets the zone name.
-     *
-     * @param zone the zone name
-     */
-    public void setZone(String zone) {
-        this.zone = zone;
-    }
-
-    /**
-     * Returns the nameserver.
-     *
-     * @return the nameserver
-     */
-    public String getNameserver() {
-        return nameserver;
-    }
-
-    /**
-     * Sets the nameserver.
-     *
-     * @param nameserver the nameserver
-     */
-    public void setNameserver(String nameserver) {
-        this.nameserver = nameserver;
-    }
-
-    /**
-     * Returns the scoped key file path.
-     *
-     * @return the key file path
-     */
-    public String getKeyFile() {
-        return keyFile;
-    }
-
-    /**
-     * Sets the scoped key file path.
-     *
-     * @param keyFile the key file path
-     */
-    public void setKeyFile(String keyFile) {
-        this.keyFile = keyFile;
-    }
-
-    /**
-     * Returns the zone definition file.
-     *
-     * @return the file path
-     */
-    public String getSourcePath() {
-        return sourcePath;
-    }
-
-    /**
-     * Sets the zone definition file.
-     *
-     * @param sourcePath the file path
-     */
-    public void setSourcePath(String sourcePath) {
-        this.sourcePath = sourcePath;
-    }
-
-    /**
-     * Returns the records.
-     * <p>
-     * After the View has loaded, this is the list the View is watching.
-     *
-     * @return the records
-     */
-    public List<RecordEditor> getRecords() {
-        return records;
-    }
-
-    /**
-     * Sets the records.
-     *
-     * @param records the records
-     */
-    public void setRecords(List<RecordEditor> records) {
-        this.records = records;
-    }
-
-    /**
-     * Returns the latest reconciliation text for this zone.
-     *
-     * @return the text
-     */
-    public String getOutcome() {
-        return outcome;
-    }
-
-    /**
-     * Sets the latest reconciliation text for this zone.
-     *
-     * @param outcome the text
-     */
-    public void setOutcome(String outcome) {
-        this.outcome = outcome;
-    }
 }

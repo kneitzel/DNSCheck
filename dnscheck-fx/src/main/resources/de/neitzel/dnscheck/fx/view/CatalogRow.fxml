@@ -10,7 +10,6 @@
          xmlns:fx="http://javafx.com/fxml" spacing="8" alignment="CENTER_LEFT">
     <fx:define>
         <BindingList>
-            <DirectBinding control="ownerLabel" property="text" path="ownerFolder" direction="view"/>
             <DirectBinding control="zoneLabel" property="text" path="zone" direction="view"/>
             <DirectBinding control="nameserverLabel" property="text" path="nameserver" direction="view"/>
             <DirectBinding control="keyLabel" property="text" path="keyFile" direction="view"/>
@@ -18,7 +17,6 @@
             <DirectBinding control="errorLabel" property="text" path="error" direction="view"/>
         </BindingList>
     </fx:define>
-    <Label fx:id="ownerLabel"/>
     <Label fx:id="zoneLabel"/>
     <Label fx:id="nameserverLabel"/>
     <Label fx:id="keyLabel"/>

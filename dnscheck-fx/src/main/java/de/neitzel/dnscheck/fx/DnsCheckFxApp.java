@@ -10,6 +10,8 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
+import java.io.IOException;
+import java.nio.file.Path;
 
 /**
  * Opens the zone catalog and edits zone definitions with the fx library.
@@ -40,40 +42,32 @@ public class DnsCheckFxApp extends Application {
     public void start(Stage stage) {
         ApplicationContext context = new ApplicationContext(DnsCheckFxApp.class);
         Desk desk = context.getComponent(Desk.class);
-        desk.prepare(session(), context);
+        desk.prepare(session(context.getComponent(RecentDirectories.class), System.getenv("DNSCHECK_DIRECTORY")), context);
         LoadedView loaded = ViewLoader.load(
                 CatalogController.class.getResource("Catalog.fxml"), desk.catalog(), context);
         stage.setTitle("DNSCheck");
         stage.setScene(new Scene(loaded.getRoot()));
+        stage.setOnCloseRequest(event -> {
+            if (!UnsavedChanges.confirm(desk.zone(), context.getComponent(ZoneFiles.class), stage)) event.consume();
+        });
         stage.show();
     }
 
-    /**
-     * Builds the catalog Model from the environment, falling back to {@code ./zones} and {@code ./keys}.
-     *
-     * @return the catalog Model
-     */
-    private static CatalogSession session() {
+    /** Prefer an explicit environment directory, then the most recent existing folder, then the working directory. */
+    static CatalogSession session(RecentDirectories recent, String override) {
+        String directory = override;
+        if (directory == null || directory.isBlank()) {
+            try {
+                directory = recent.existingDirectories().stream().findFirst().map(Path::toString).orElse(".");
+            } catch (IOException | RuntimeException unavailableHistory) {
+                // The catalog's Recent menu reports configuration errors after the window loads.
+                directory = ".";
+            }
+        }
         CatalogSession session = new CatalogSession();
-        session.setZonesDirectory(directory("DNSCHECK_ZONES_DIR", "./zones"));
-        session.setKeysDirectory(directory("DNSCHECK_KEYS_DIR", "./keys"));
+        session.setDirectory(directory);
         session.setEntries(new ArrayList<>());
         session.setOutcome("");
         return session;
-    }
-
-    /**
-     * Returns the directory named by an environment variable, or the fallback when it is unset or blank.
-     *
-     * @param env      the environment variable
-     * @param fallback the directory used when the variable is unset or blank
-     * @return the directory
-     */
-    private static String directory(String env, String fallback) {
-        String value = System.getenv(env);
-        if (value == null || value.isBlank()) {
-            return fallback;
-        }
-        return value;
     }
 }
