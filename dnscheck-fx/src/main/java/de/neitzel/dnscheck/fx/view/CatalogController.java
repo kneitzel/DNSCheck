@@ -1,10 +1,10 @@
 package de.neitzel.dnscheck.fx.view;
 
-import de.neitzel.dnscheck.core.reconcile.ZoneReconciliationResult;
 import de.neitzel.dnscheck.fx.Attributes;
 import de.neitzel.dnscheck.fx.Desk;
-import de.neitzel.dnscheck.fx.OutcomeText;
+import de.neitzel.dnscheck.fx.UnsavedChanges;
 import de.neitzel.dnscheck.fx.ZoneFiles;
+import de.neitzel.dnscheck.fx.RecentDirectories;
 import de.neitzel.dnscheck.fx.model.CatalogEntryModel;
 import de.neitzel.fx.view.HasViewModel;
 import de.neitzel.fx.view.LoadedView;
@@ -13,259 +13,250 @@ import de.neitzel.fx.view.ViewLoader;
 import de.neitzel.fx.view.ViewModel;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.SplitPane;
+import javafx.scene.control.skin.SplitPaneSkin;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
+import javafx.stage.DirectoryChooser;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 
-/**
- * Controller for the zone catalog.
- */
+/** Opens local directories and switches between their catalog and individual zone details. */
 @Singleton
 public class CatalogController implements HasViewModel {
-
-    /**
-     * The desk that holds the catalog Model and the open zone.
-     */
     private final Desk desk;
-
-    /**
-     * Catalog access: load, save, and reconcile zone files.
-     */
     private final ZoneFiles zoneFiles;
-
-    /**
-     * The catalog ViewModel, set before the bindings run.
-     */
+    private final RecentDirectories recentDirectories;
     private ViewModel viewModel;
+    private TreeItem<String> activeItem;
+    private boolean changingSelection;
 
-    /**
-     * Whether a reconciliation run is already going.
-     */
-    private boolean busy;
+    @FXML private SplitPane catalogSplit;
+    @FXML private TreeView<String> domainsTree;
+    @FXML private de.neitzel.fx.view.Table entriesTable;
+    @FXML private VBox editorHost;
+    @FXML private Menu recentMenu;
 
-    /**
-     * The pane that holds the open zone View, or a prompt when none is open.
-     */
-    @FXML
-    private VBox editorHost;
-
-    /**
-     * Creates the controller.
-     *
-     * @param desk      the desk
-     * @param zoneFiles catalog access
-     */
     @Inject
-    public CatalogController(Desk desk, ZoneFiles zoneFiles) {
+    public CatalogController(Desk desk, ZoneFiles zoneFiles, RecentDirectories recentDirectories) {
         this.desk = desk;
         this.zoneFiles = zoneFiles;
+        this.recentDirectories = recentDirectories;
     }
 
-    /**
-     * Receives the catalog ViewModel and loads the catalog.
-     *
-     * @param viewModel the catalog ViewModel
-     */
     @Override
     public void setViewModel(ViewModel viewModel) {
         this.viewModel = viewModel;
         desk.catalogView(viewModel);
-        viewModel.property("selected").addListener((observable, oldValue, newValue) -> describeSelection());
+        // ViewLoader discovers tables through scene children, so expose SplitPane items before its traversal.
+        catalogSplit.setSkin(new SplitPaneSkin(catalogSplit));
+        domainsTree.getSelectionModel().selectedItemProperty()
+                .addListener((observable, previous, selected) -> navigate(selected));
+        replaceTree();
         reload();
+        refreshRecent();
     }
 
-    /**
-     * Reads the zone catalog directory again.
-     */
+    /** File → Open loads the chosen directory without a second Reload action. */
+    @FXML
+    public void browse() {
+        Path selected = chooseDirectory();
+        if (selected != null) openDirectory(selected);
+    }
+
+    /** Native chooser boundary; a cancelled chooser leaves the current directory intact. */
+    protected Path chooseDirectory() {
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("Open DNSCheck directory");
+        try {
+            var current = desk.requestedDirectory().toFile();
+            if (current.isDirectory()) chooser.setInitialDirectory(current);
+        } catch (RuntimeException ignored) {
+            // A chooser can recover from an invalid initial directory.
+        }
+        var selected = chooser.showDialog(editorHost.getScene() == null ? null : editorHost.getScene().getWindow());
+        return selected == null ? null : selected.toPath();
+    }
+
     @FXML
     public void reload() {
         try {
-            Desk.CatalogDirectories directories = desk.requestedDirectories();
-            List<CatalogEntryModel> loaded = zoneFiles.load(directories.zones());
-            desk.catalogLoaded(directories);
+            openDirectory(desk.requestedDirectory());
+        } catch (RuntimeException failure) {
+            note(text(failure));
+        }
+    }
+
+    /** Commit a directory, catalog and navigation together, only after loading and edit confirmation succeed. */
+    public boolean openDirectory(Path requested) {
+        try {
+            Path directory = requested.toAbsolutePath().normalize();
+            List<CatalogEntryModel> loaded = zoneFiles.load(directory);
+            boolean hadEdits = desk.zone() != null && desk.zone().isDirty();
+            if (!confirmChanges()) return false;
+            if (hadEdits) loaded = zoneFiles.load(directory);
+            Attributes.set(viewModel, "directory", directory.toString());
+            desk.catalogLoaded(directory);
             entries().clear();
             entries().addAll(loaded);
-            Attributes.set(viewModel, "selected", null);
-            desk.edit(null);
-            editorHost.getChildren().setAll(new Label("Open a catalog entry to edit its zone definition."));
-            Attributes.set(viewModel, "outcome", loaded.isEmpty() ? "No catalog entries." : "");
-        } catch (RuntimeException | IOException failure) {
-            note(Message.Severity.ERROR, text(failure), "catalog");
+            replaceTree();
+            Attributes.set(viewModel, "outcome", "");
+            try {
+                recentDirectories.remember(directory);
+            } catch (IOException | RuntimeException historyFailure) {
+                note("Folder opened, but recent history could not be saved: " + text(historyFailure));
+            }
+            refreshRecent();
+            return true;
+        } catch (IOException | RuntimeException failure) {
+            note(text(failure));
+            return false;
         }
     }
 
-    /**
-     * Loads the selected zone definition into the editor.
-     */
     @FXML
+    public void refreshRecent() {
+        recentMenu.getItems().clear();
+        try {
+            for (Path directory : recentDirectories.existingDirectories()) {
+                MenuItem item = new MenuItem(directory.toString());
+                item.setMnemonicParsing(false);
+                item.setOnAction(event -> {
+                    openDirectory(directory);
+                    refreshRecent();
+                });
+                recentMenu.getItems().add(item);
+            }
+            if (recentMenu.getItems().isEmpty()) recentPlaceholder("No recent folders");
+        } catch (IOException | RuntimeException failure) {
+            recentPlaceholder("Recent folders unavailable");
+            note("Could not read recent folders: " + text(failure));
+        }
+    }
+
+    private void recentPlaceholder(String text) {
+        MenuItem item = new MenuItem(text);
+        item.setDisable(true);
+        recentMenu.getItems().setAll(item);
+    }
+
+    private void replaceTree() {
+        changingSelection = true;
+        try {
+            TreeItem<String> root = new TreeItem<>("Domains");
+            for (CatalogEntryModel entry : entries()) root.getChildren().add(new TreeItem<>(entry.getZone()));
+            root.setExpanded(true);
+            domainsTree.setRoot(root);
+            domainsTree.getSelectionModel().select(root);
+            activeItem = root;
+            showCatalog();
+        } finally {
+            changingSelection = false;
+        }
+    }
+
+    private void navigate(TreeItem<String> selected) {
+        if (changingSelection || selected == null || selected == activeItem) return;
+        changingSelection = true;
+        try {
+            if (!confirmChanges()) {
+                domainsTree.getSelectionModel().select(activeItem);
+                return;
+            }
+            if (selected == domainsTree.getRoot()) {
+                showCatalog();
+            } else {
+                Path directory = desk.requireLoadedDirectory();
+                CatalogEntryModel entry = entries().stream()
+                        .filter(candidate -> candidate.getZone().equals(selected.getValue()))
+                        .findFirst().orElseThrow();
+                if (entry.isValid()) {
+                    var editor = zoneFiles.open(directory, entry);
+                    var previous = desk.zone();
+                    desk.edit(editor);
+                    LoadedView view;
+                    try {
+                        view = ViewLoader.load(ZoneController.class.getResource("Zone.fxml"), editor, desk.context());
+                    } catch (RuntimeException failure) {
+                        desk.edit(previous);
+                        throw failure;
+                    }
+                    editorHost.getChildren().setAll(view.getRoot());
+                } else {
+                    desk.edit(null);
+                    Label error = new Label(entry.getZone() + " is invalid: " + entry.getError());
+                    error.setWrapText(true);
+                    editorHost.getChildren().setAll(error);
+                }
+                Attributes.set(viewModel, "selected", entry);
+                entriesTable.setVisible(false);
+                entriesTable.setManaged(false);
+                editorHost.setVisible(true);
+                editorHost.setManaged(true);
+            }
+            activeItem = selected;
+            Attributes.set(viewModel, "outcome", "");
+        } catch (IOException | RuntimeException failure) {
+            domainsTree.getSelectionModel().select(activeItem);
+            note(text(failure));
+        } finally {
+            changingSelection = false;
+        }
+    }
+
+    private void showCatalog() {
+        desk.edit(null);
+        Attributes.set(viewModel, "selected", null);
+        editorHost.getChildren().clear();
+        editorHost.setVisible(false);
+        editorHost.setManaged(false);
+        entriesTable.setVisible(true);
+        entriesTable.setManaged(true);
+    }
+
+    /** A table row can also be opened by double-clicking it. */
+    @FXML
+    public void tableClicked(MouseEvent event) {
+        if (event.getClickCount() == 2) open();
+    }
+
     public void open() {
         CatalogEntryModel selected = desk.catalog().getSelected();
-        if (selected == null) {
-            note(Message.Severity.WARN, "Select a catalog entry.", "catalog");
-            return;
-        }
-        if (!selected.isValid()) {
-            note(Message.Severity.ERROR, selected.getCatalogRef() + " is invalid: " + selected.getError(), "catalog");
-            return;
-        }
-        try {
-            var editor = zoneFiles.open(desk.requireLoadedDirectories().zones(), selected);
-            desk.edit(editor);
-            LoadedView zoneView = ViewLoader.load(
-                    ZoneController.class.getResource("Zone.fxml"), editor, desk.context());
-            editorHost.getChildren().setAll(zoneView.getRoot());
-        } catch (RuntimeException | IOException failure) {
-            note(Message.Severity.ERROR, text(failure), "catalog");
-        }
+        if (selected == null) return;
+        domainsTree.getRoot().getChildren().stream()
+                .filter(item -> item.getValue().equals(selected.getZone()))
+                .findFirst().ifPresent(item -> domainsTree.getSelectionModel().select(item));
     }
 
-    /**
-     * Dry-runs the selected catalog entry from the file on disk.
-     */
-    @FXML
-    public void dryRun() {
-        run(true);
+    private boolean confirmChanges() {
+        if (desk.zone() != null && desk.zone().isApplying()) {
+            note("Wait for the current record change to finish.");
+            return false;
+        }
+        return UnsavedChanges.confirm(desk.zone(), zoneFiles,
+                editorHost.getScene() == null ? null : editorHost.getScene().getWindow());
     }
 
-    /**
-     * Reconciles the selected catalog entry from the file on disk.
-     */
-    @FXML
-    public void reconcile() {
-        run(false);
-    }
-
-    /**
-     * Dry-runs or reconciles the selected catalog entry from the file on disk.
-     *
-     * @param dryRun {@code true} to report drift without sending {@code nsupdate}
-     */
-    private void run(boolean dryRun) {
-        CatalogEntryModel selected = desk.catalog().getSelected();
-        if (selected == null || !selected.isValid()) {
-            note(Message.Severity.WARN, "Select a valid catalog entry.", "reconcile");
-            return;
-        }
-        if (busy) {
-            note(Message.Severity.WARN, "A reconciliation run is already going.", "reconcile");
-            return;
-        }
-        Desk.CatalogDirectories directories;
-        try {
-            directories = desk.requireLoadedDirectories();
-        } catch (RuntimeException failure) {
-            note(Message.Severity.ERROR, text(failure), "reconcile");
-            return;
-        }
-        busy = true;
-        Attributes.set(viewModel, "outcome", dryRun ? "Dry-run…" : "Reconciling…");
-        Path zones = directories.zones();
-        Path keys = directories.keys();
-        String owner = selected.getOwnerFolder();
-        String zone = selected.getZone();
-        Thread.startVirtualThread(() -> finish(reconcile(zones, keys, owner, zone, dryRun)));
-    }
-
-    /**
-     * Reconciles one catalog entry, turning a failure into a failed zone outcome.
-     *
-     * @param zones   the zone catalog directory
-     * @param keys    the keys directory
-     * @param owner   the owner folder
-     * @param zone    the zone name
-     * @param dryRun  {@code true} to report drift without sending {@code nsupdate}
-     * @return the zone outcome
-     */
-    private ZoneReconciliationResult reconcile(
-            Path zones, Path keys, String owner, String zone, boolean dryRun) {
-        try {
-            return zoneFiles.reconcile(zones, keys, owner, zone, dryRun);
-        } catch (RuntimeException failure) {
-            return ZoneReconciliationResult.failed(owner + "/" + zone, text(failure));
-        }
-    }
-
-    /**
-     * Writes the zone outcome onto the catalog View on the JavaFX thread.
-     *
-     * @param result the zone outcome
-     */
-    private void finish(ZoneReconciliationResult result) {
-        Platform.runLater(() -> {
-            busy = false;
-            show(viewModel, result);
-        });
-    }
-
-    /**
-     * Writes a short description of the selected catalog entry into the outcome text.
-     */
-    private void describeSelection() {
-        CatalogEntryModel selected = desk.catalog().getSelected();
-        if (selected == null) {
-            return;
-        }
-        if (!selected.isValid()) {
-            Attributes.set(viewModel, "outcome", selected.getCatalogRef() + " is invalid: " + selected.getError());
-            return;
-        }
-        Attributes.set(viewModel, "outcome", selected.getCatalogRef()
-                + "  nameserver " + selected.getNameserver()
-                + "  key file " + selected.getKeyFile());
-    }
-
-    /**
-     * Returns the catalog entries the table watches.
-     *
-     * @return the entries
-     */
     @SuppressWarnings("unchecked")
     private List<CatalogEntryModel> entries() {
         return (List<CatalogEntryModel>) viewModel.property("entries").getValue();
     }
 
-    /**
-     * Records a Message and the same text as the outcome.
-     *
-     * @param severity how serious the notice is
-     * @param text     the notice text
-     * @param source   where the notice came from
-     */
-    private void note(Message.Severity severity, String text, String source) {
-        viewModel.addMessage(new Message(severity, text, source));
+    private void note(String text) {
+        viewModel.addMessage(new Message(Message.Severity.ERROR, text, "catalog"));
         Attributes.set(viewModel, "outcome", text);
     }
 
-    /**
-     * Writes a zone outcome onto a ViewModel as text and as a Message.
-     *
-     * @param target the ViewModel that shows the outcome
-     * @param result the zone outcome
-     */
-    private static void show(ViewModel target, ZoneReconciliationResult result) {
-        Attributes.set(target, "outcome", OutcomeText.of(result));
-        target.addMessage(new Message(
-                OutcomeText.severity(result.outcome()),
-                result.zoneName() + ": " + result.outcome(),
-                "reconcile"));
-    }
-
-    /**
-     * Returns the exception message, or a fallback when it is missing.
-     *
-     * @param failure the failure
-     * @return the text
-     */
     private static String text(Exception failure) {
         String message = failure.getMessage();
-        if (message == null || message.isBlank()) {
-            return "Could not read the zone catalog.";
-        }
-        return message;
+        return message == null || message.isBlank() ? "Could not read the zone catalog." : message;
     }
 }

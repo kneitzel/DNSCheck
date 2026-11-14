@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.TextArea?>
-<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TreeView?>
 <?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import de.neitzel.fx.view.BindingList?>
 <?import de.neitzel.fx.view.Column?>
@@ -15,61 +17,45 @@
 
 <BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
             fx:controller="de.neitzel.dnscheck.fx.view.CatalogController"
-            prefWidth="960" prefHeight="700">
-    <padding>
-        <Insets top="12" right="12" bottom="12" left="12"/>
-    </padding>
+            prefWidth="1200" prefHeight="800">
     <fx:define>
         <BindingList>
-            <DirectBinding control="zonesField" property="text" path="zonesDirectory" direction="both"/>
-            <DirectBinding control="keysField" property="text" path="keysDirectory" direction="both"/>
+            <DirectBinding control="directoryLabel" property="text" path="directory" direction="view"/>
             <DirectBinding control="entriesTable" property="selection" path="selected" direction="both"/>
-            <DirectBinding control="noticeLabel" property="text" path="latestMessage" direction="view"/>
-            <DirectBinding control="outcomeArea" property="text" path="outcome" direction="view"/>
+            <DirectBinding control="statusLabel" property="text" path="outcome" direction="view"/>
         </BindingList>
     </fx:define>
     <top>
-        <VBox spacing="8">
-            <Label text="DNSCheck" style="-fx-font-size: 16px;"/>
-            <HBox spacing="8">
-                <Label text="Zones" minWidth="50"/>
-                <TextField fx:id="zonesField" HBox.hgrow="ALWAYS"/>
-                <Label text="Keys" minWidth="40"/>
-                <TextField fx:id="keysField" HBox.hgrow="ALWAYS"/>
-                <Button text="Reload" onAction="#reload"/>
-            </HBox>
-            <Table fx:id="entriesTable" id="entriesTable" collection="entries"
-                   row="de.neitzel.dnscheck.fx.view.CatalogRow" prefHeight="180" maxWidth="Infinity">
-                <Column header="Owner" attribute="ownerFolder" width="140"/>
-                <Column header="Zone" attribute="zone" width="180"/>
-                <Column header="Nameserver" attribute="nameserver" width="200"/>
-                <Column header="Key file" attribute="keyFile" width="220"/>
-                <Column header="Valid" attribute="valid" width="80"/>
-                <Column header="Error" attribute="error" width="180"/>
-            </Table>
-            <HBox spacing="8">
-                <Button text="Open" onAction="#open"/>
-                <Button text="Dry-run file" onAction="#dryRun"/>
-                <Button text="Reconcile file" onAction="#reconcile"/>
-            </HBox>
+        <VBox spacing="6">
+            <MenuBar fx:id="fileMenuBar">
+                <Menu text="_File">
+                    <MenuItem fx:id="openDirectoryMenu" text="_Open…" onAction="#browse" accelerator="Shortcut+O"/>
+                    <MenuItem fx:id="reloadMenu" text="_Reload" onAction="#reload" accelerator="Shortcut+R"/>
+                    <Menu fx:id="recentMenu" text="_Recent" onShowing="#refreshRecent"/>
+                </Menu>
+            </MenuBar>
+            <Label fx:id="directoryLabel" style="-fx-padding: 0 12 6 12;"/>
         </VBox>
     </top>
     <center>
-        <VBox fx:id="editorHost" spacing="8">
-            <padding>
-                <Insets top="12" right="0" bottom="0" left="0"/>
-            </padding>
-            <Label text="Open a catalog entry to edit its zone definition."/>
-        </VBox>
+        <SplitPane fx:id="catalogSplit" dividerPositions="0.22">
+            <TreeView fx:id="domainsTree" minWidth="160" prefWidth="240"/>
+            <StackPane>
+                <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
+                <Table fx:id="entriesTable" id="entriesTable" collection="entries"
+                       row="de.neitzel.dnscheck.fx.view.CatalogRow" onMouseClicked="#tableClicked"
+                       maxWidth="Infinity" maxHeight="Infinity">
+                    <Column header="Zone" attribute="zone" width="180"/>
+                    <Column header="Nameserver" attribute="nameserver" width="200"/>
+                    <Column header="Key file" attribute="keyFile" width="220"/>
+                    <Column header="Valid" attribute="valid" width="80"/>
+                    <Column header="Error" attribute="error" width="180"/>
+                </Table>
+                <VBox fx:id="editorHost" spacing="8" visible="false" managed="false"/>
+            </StackPane>
+        </SplitPane>
     </center>
     <bottom>
-        <VBox spacing="6">
-            <padding>
-                <Insets top="8" right="0" bottom="0" left="0"/>
-            </padding>
-            <Label text="Notice"/>
-            <Label fx:id="noticeLabel" wrapText="true"/>
-            <TextArea fx:id="outcomeArea" editable="false" wrapText="true" prefRowCount="6"/>
-        </VBox>
+        <Label fx:id="statusLabel" wrapText="true" style="-fx-padding: 6 12 6 12;"/>
     </bottom>
 </BorderPane>

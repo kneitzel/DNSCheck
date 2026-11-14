@@ -1,7 +1,6 @@
 package de.neitzel.dnscheck.cli.command;
 
-import de.neitzel.dnscheck.core.ownership.CatalogEntryIdentity;
-import de.neitzel.dnscheck.core.reconcile.DefaultReconciliationEngine;
+import de.neitzel.dnscheck.core.zone.LocalZoneDirectory;
 import de.neitzel.dnscheck.core.reconcile.ReconciliationRunResult;
 import de.neitzel.dnscheck.core.reconcile.ZoneOutcome;
 import de.neitzel.dnscheck.core.reconcile.ZoneReconciliationResult;
@@ -17,18 +16,19 @@ import java.util.concurrent.Callable;
  */
 @Command(
         name = "reconcile",
-        description = "Reconcile live DNS against zone definition JSON files")
+        mixinStandardHelpOptions = true,
+        description = "Reconcile live DNS against .domain JSON files in one directory")
 public class ReconcileCommand implements Callable<Integer> {
 
     /**
-     * Zone catalog entry to reconcile, written as an owner folder and a zone name.
+     * Bare DNS zone name to reconcile within the selected local directory.
      * When this is omitted, the reconciliation run covers every entry in the zone catalog.
      */
     @Parameters(
             index = "0",
             arity = "0..1",
-            description = "Catalog entry to reconcile (e.g. admin.u/example.com). Omit to reconcile all entries.")
-    String catalogEntry;
+            description = "Zone to reconcile (e.g. example.com). Omit to reconcile all .domain files.")
+    String zone;
 
     /**
      * Selects a dry-run, so the reconciliation run reports drift without sending nsupdate.
@@ -38,23 +38,10 @@ public class ReconcileCommand implements Callable<Integer> {
             description = "Detect drift without applying nsupdate")
     boolean dryRun;
 
-    /**
-     * Directory that contains the zone catalog. Each zone definition lives in an owner folder.
-     */
-    @Option(
-            names = {"--zones-dir"},
-            description = "Zone catalog directory",
-            defaultValue = "${env:DNSCHECK_ZONES_DIR:-./zones}")
-    String zonesDir;
-
-    /**
-     * Directory that contains the TSIG key files, each stored under an owner folder.
-     */
-    @Option(
-            names = {"--keys-dir"},
-            description = "TSIG keys directory",
-            defaultValue = "${env:DNSCHECK_KEYS_DIR:-./keys}")
-    String keysDir;
+    /** Directory containing both definitions and keys. */
+    @Option(names = "--directory", description = "Directory containing .domain and key files",
+            defaultValue = "${env:DNSCHECK_DIRECTORY:-.}")
+    Path directory;
 
     /**
      * Runs reconciliation for one zone catalog entry, or for every entry when none is named.
@@ -63,16 +50,14 @@ public class ReconcileCommand implements Callable<Integer> {
      */
     @Override
     public Integer call() {
-        var engine = new DefaultReconciliationEngine(Path.of(zonesDir), Path.of(keysDir));
-        if (catalogEntry == null) {
+        var engine = new LocalZoneDirectory(directory);
+        if (zone == null) {
             ReconciliationRunResult result = engine.reconcileAll(dryRun);
             result.zoneResults().forEach(this::printResult);
             return result.zoneResults().stream().anyMatch(this::isFailure) ? 1 : 0;
         }
 
-        CatalogEntryIdentity identity = CatalogEntryIdentity.parseCatalogRef(catalogEntry);
-        ZoneReconciliationResult result = engine.reconcileCatalogEntry(
-                identity.ownerFolder().folderName(), identity.zoneName(), dryRun);
+        ZoneReconciliationResult result = engine.reconcile(zone, dryRun);
         printResult(result);
         return isFailure(result) ? 1 : 0;
     }

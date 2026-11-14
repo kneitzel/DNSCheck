@@ -84,7 +84,7 @@ dnscheck --help
 dnscheck reconcile --help
 ```
 
-The CLI reads the same zone catalog and keys directories as the service. Set `DNSCHECK_ZONES_DIR` and `DNSCHECK_KEYS_DIR`, or pass `--zones-dir` and `--keys-dir`. See [CLI](cli.md).
+The CLI reads one local directory of `.domain` definitions and colocated keys. Set `DNSCHECK_DIRECTORY` or pass `--directory`. See [CLI](cli.md) for format and migration.
 
 ## Docker install
 
@@ -104,11 +104,11 @@ See [README](../README.md#quick-start-docker) for first-login steps.
 Use the same image with the `cli` entrypoint:
 
 ```bash
-docker compose run --rm dnscheck cli reconcile --dry-run
-docker compose run --rm dnscheck cli reconcile admin.u/example.com
+docker compose run --rm -v "$PWD/checkdns:/data/local" dnscheck cli reconcile --directory /data/local --dry-run
+docker compose run --rm -v "$PWD/checkdns:/data/local" dnscheck cli reconcile example.com --directory /data/local
 ```
 
-Mount the same `zones` and `keys` volumes as the service container.
+Mount the local directory containing `.domain` definitions and their keys. The service retains its separate scoped storage.
 
 ### Host networking
 

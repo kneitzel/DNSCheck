@@ -1,8 +1,8 @@
 package de.neitzel.dnscheck.core.zone;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import de.neitzel.dnscheck.core.model.RecordSpec;
@@ -28,6 +28,8 @@ public final class ZoneDefinitionStore {
      */
     private final ObjectMapper objectMapper;
 
+    private final String suffix;
+
     /**
      * Normalizes record names to FQDN when a zone definition is loaded.
      */
@@ -39,7 +41,8 @@ public final class ZoneDefinitionStore {
     public ZoneDefinitionStore() {
         this(new ZoneNameNormalizer(), new ObjectMapper()
                 .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-                .enable(SerializationFeature.INDENT_OUTPUT));
+                .enable(SerializationFeature.INDENT_OUTPUT)
+                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES));
     }
 
     /**
@@ -49,8 +52,21 @@ public final class ZoneDefinitionStore {
      * @param objectMapper the mapper used to read and write zone definition JSON.
      */
     ZoneDefinitionStore(ZoneNameNormalizer nameNormalizer, ObjectMapper objectMapper) {
+        this(nameNormalizer, objectMapper, ".json");
+    }
+
+    private ZoneDefinitionStore(ZoneNameNormalizer nameNormalizer, ObjectMapper objectMapper, String suffix) {
         this.nameNormalizer = nameNormalizer;
         this.objectMapper = objectMapper;
+        this.suffix = suffix;
+    }
+
+    /** Creates the strict JSON store for local CLI and desktop .domain files. */
+    public static ZoneDefinitionStore localDirectoryStore() {
+        return new ZoneDefinitionStore(new ZoneNameNormalizer(), new ObjectMapper()
+                .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+                .enable(SerializationFeature.INDENT_OUTPUT)
+                .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES), ".domain");
     }
 
     /**
@@ -160,32 +176,22 @@ public final class ZoneDefinitionStore {
     }
 
     /**
-     * Checks that the zone name equals the file name without the {@code .json} suffix.
+     * Checks that the zone name matches the configured filename suffix.
      *
      * @param zoneFile the zone definition file.
      * @param zone the zone name from the file contents.
      * @throws IllegalArgumentException when the zone name and the file name differ.
      */
-    private static void validateFilename(Path zoneFile, String zone) {
-        String expectedStem = zone;
-        String actualStem = stripJsonSuffix(zoneFile.getFileName().toString());
-        if (!expectedStem.equals(actualStem)) {
+    private void validateFilename(Path zoneFile, String zone) {
+        String filename = zoneFile.getFileName().toString();
+        boolean matches = suffix.equals(".json")
+                ? zone != null && zone.equals(filename.toLowerCase().endsWith(".json")
+                    ? filename.substring(0, filename.length() - 5) : filename)
+                : zone != null && filename.equals(zone + suffix);
+        if (!matches) {
             throw new IllegalArgumentException(
                     "Zone name '%s' does not match filename '%s'".formatted(zone, zoneFile.getFileName()));
         }
-    }
-
-    /**
-     * Removes a trailing {@code .json} suffix, ignoring case. Other names are returned unchanged.
-     *
-     * @param filename the file name, which may include the suffix.
-     * @return the file name without that suffix.
-     */
-    private static String stripJsonSuffix(String filename) {
-        if (filename.toLowerCase().endsWith(".json")) {
-            return filename.substring(0, filename.length() - 5);
-        }
-        return filename;
     }
 
     /**
@@ -205,12 +211,11 @@ public final class ZoneDefinitionStore {
 
     /**
      * JSON shape of a zone definition file.
-     * Unknown properties are ignored so older files still load.
+     * Unknown properties are rejected by the local store and ignored by the default service store.
      */
-    @JsonIgnoreProperties(ignoreUnknown = true)
     static final class ZoneDefinitionJson {
         /**
-         * DNS zone name. It must match the file name without the {@code .json} suffix.
+         * DNS zone name. It must match the file name without the selected suffix.
          */
         public String zone;
 
@@ -232,9 +237,8 @@ public final class ZoneDefinitionStore {
 
     /**
      * JSON shape of one managed record or deletion marker inside a zone definition.
-     * Unknown properties are ignored.
+     * Unknown-property handling follows the selected store.
      */
-    @JsonIgnoreProperties(ignoreUnknown = true)
     static final class RecordJson {
         /**
          * Owner name as written in the file, either relative to the zone or an FQDN.

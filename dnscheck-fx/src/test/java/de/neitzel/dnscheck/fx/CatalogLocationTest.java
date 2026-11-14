@@ -8,29 +8,28 @@ import de.neitzel.fx.view.LoadedView;
 import de.neitzel.fx.view.ViewLoader;
 import de.neitzel.injection.ApplicationContext;
 import javafx.application.Platform;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.List;
+import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Exercises real FXML controllers; only the network reconciliation boundary is replaced. */
+/** Real FXML navigation and menus, replacing only the native chooser and network boundaries. */
 class CatalogLocationTest {
     @TempDir Path temp;
 
     @BeforeAll
     static void toolkit() throws Exception {
+        Platform.setImplicitExit(false);
         CountDownLatch started = new CountDownLatch(1);
         try {
             Platform.startup(started::countDown);
@@ -40,150 +39,258 @@ class CatalogLocationTest {
         assertTrue(started.await(10, TimeUnit.SECONDS));
     }
 
-    @ParameterizedTest
-    @CsvSource({"true,true,true", "true,true,false", "true,false,true", "true,false,false",
-            "false,true,true", "false,true,false", "false,false,true", "false,false,false"})
-    void directoryEditsRequireReloadBeforeReconciling(boolean zoneAction, boolean changeZones, boolean dryRun)
-            throws Exception {
+    @Test
+    void treeSelectionSwitchesBetweenOnlyTheTableAndZoneDetails() throws Exception {
         Fixture f = fixture();
-        String originalA = Files.readString(f.fileA());
-        String originalB = Files.readString(f.fileB());
         onFx(() -> {
-            f.catalogController().open();
-            ((TextField) f.view().getRoot().lookup("#nameserverField")).setText("edited.example.com");
-            TextField directory = (TextField) f.view().getRoot().lookup(changeZones ? "#zonesField" : "#keysField");
-            String originalDirectory = directory.getText();
-            directory.setText(changeZones ? f.zonesB().toString() : f.keysB().toString());
-            run(f, zoneAction, dryRun);
-            // Both controllers must report the blocked action in the visible notice.
-            assertTrue(f.view().getRoot().lookupAll(".label").stream()
-                    .filter(javafx.scene.control.Label.class::isInstance)
-                    .map(javafx.scene.control.Label.class::cast)
-                    .anyMatch(label -> label.getText() != null && label.getText().contains("Reload")));
-            assertEquals(originalA, Files.readString(f.fileA()), "Blocked reconciliation must not save first");
-            assertEquals(originalB, Files.readString(f.fileB()));
-            assertTrue(f.files().calls.isEmpty());
-            directory.setText(originalDirectory);
-            run(f, zoneAction, dryRun); // Rejection must not leave the controller busy.
+            assertEquals("Domains", f.tree().getRoot().getValue());
+            assertTrue(f.tree().getRoot().isExpanded());
+            assertEquals(List.of("example.com", "example.net"), f.tree().getRoot().getChildren().stream()
+                    .map(TreeItem::getValue).toList());
+            assertTrue(f.view().getRoot().lookup("#entriesTable").isVisible());
+            assertFalse(f.view().getRoot().lookup("#editorHost").isVisible());
+            assertEquals(2, ((SplitPane) f.view().getRoot().lookup("#catalogSplit")).getItems().size());
+            f.tree().getSelectionModel().select(f.tree().getRoot().getChildren().getFirst());
+            assertEquals("example.com", f.desk().zone().getZone());
+            assertEquals("ns-a.example.com", ((TextField) f.view().getRoot().lookup("#nameserverField")).getText());
+            assertFalse(f.view().getRoot().lookup("#entriesTable").isVisible());
+            assertTrue(f.view().getRoot().lookup("#editorHost").isVisible());
+            f.tree().getSelectionModel().select(f.tree().getRoot());
+            assertNull(f.desk().zone());
+            assertTrue(f.view().getRoot().lookup("#entriesTable").isVisible());
+            assertNull(f.view().getRoot().lookup("#nameserverField"));
             return null;
         });
-        Invocation call = f.files().calls.poll(10, TimeUnit.SECONDS);
-        assertNotNull(call);
-        assertEquals(f.zonesA(), call.zones());
-        assertEquals(f.keysA(), call.keys());
-        assertEquals(dryRun, call.dryRun());
-        assertEquals(originalB, Files.readString(f.fileB()));
-        if (zoneAction) assertTrue(Files.readString(f.fileA()).contains("edited.example.com"));
-        else assertEquals(originalA, Files.readString(f.fileA()));
+    }
+
+    @Test
+    void fileOpenLoadsImmediatelyAndFileReloadRescansTheCurrentDirectory() throws Exception {
+        Fixture f = fixture();
+        onFx(() -> {
+            f.controller().choice = f.directoryB();
+            menu(f, 0).fire();
+            assertEquals(f.directoryB(), f.desk().requireLoadedDirectory());
+            assertEquals("other.example", f.tree().getRoot().getChildren().getFirst().getValue());
+            assertEquals(f.directoryB().toString(), ((Label) f.view().getRoot().lookup("#directoryLabel")).getText());
+            zoneFile(f.directoryB(), "new.example", "ns-new.example");
+            menu(f, 1).fire();
+            assertEquals(List.of("new.example", "other.example"), f.tree().getRoot().getChildren().stream()
+                    .map(TreeItem::getValue).toList());
+            assertEquals(f.tree().getRoot(), f.tree().getSelectionModel().getSelectedItem());
+            assertNull(f.desk().zone());
+            return null;
+        });
+    }
+
+    @Test
+    void cancelledChooserAndFailedOpenPreserveTheCurrentEditorAndDirectory() throws Exception {
+        Fixture f = fixture();
+        onFx(() -> {
+            f.tree().getSelectionModel().select(f.tree().getRoot().getChildren().getFirst());
+            var editor = f.desk().zone();
+            f.controller().choice = null;
+            menu(f, 0).fire();
+            assertSame(editor, f.desk().zone());
+            f.controller().choice = temp.resolve("missing");
+            menu(f, 0).fire();
+            assertSame(editor, f.desk().zone());
+            assertEquals(f.directoryA(), f.desk().requireLoadedDirectory());
+            assertEquals("example.com", f.tree().getSelectionModel().getSelectedItem().getValue());
+            return null;
+        });
     }
 
     @ParameterizedTest
-    @CsvSource({"true,true", "true,false", "false,true", "false,false"})
-    void invalidPathsDoNotSaveOrLeaveReconciliationBusy(boolean zoneAction, boolean changeZones)
-            throws Exception {
+    @ValueSource(strings = {"Save", "Discard", "Cancel"})
+    void fileOpenProtectsUnsavedEditsAndCommitsTheDirectoryOnlyOnSuccess(String choice) throws Exception {
         Fixture f = fixture();
         String original = Files.readString(f.fileA());
         onFx(() -> {
-            f.catalogController().open();
+            f.tree().getSelectionModel().select(f.tree().getRoot().getChildren().getFirst());
             ((TextField) f.view().getRoot().lookup("#nameserverField")).setText("edited.example.com");
-            String field = changeZones ? "zonesDirectory" : "keysDirectory";
-            String old = changeZones ? f.zonesA().toString() : f.keysA().toString();
-            Attributes.set(f.view().getViewModel(), field, "invalid\0path");
-            run(f, zoneAction, true);
-            assertEquals(original, Files.readString(f.fileA()));
+            Platform.runLater(() -> clickDialog(choice));
+            f.controller().choice = f.directoryB();
+            menu(f, 0).fire();
+            if (choice.equals("Cancel")) {
+                assertEquals(f.directoryA(), f.desk().requireLoadedDirectory());
+                assertTrue(f.desk().zone().isDirty());
+                assertEquals("example.com", f.tree().getSelectionModel().getSelectedItem().getValue());
+                assertEquals(List.of(f.directoryA().toRealPath()),
+                        new RecentDirectories(temp.resolve("settings/config.json")).existingDirectories());
+            } else {
+                assertEquals(f.directoryB(), f.desk().requireLoadedDirectory());
+                assertNull(f.desk().zone());
+                assertEquals(f.tree().getRoot(), f.tree().getSelectionModel().getSelectedItem());
+            }
+            return null;
+        });
+        if (choice.equals("Save")) assertTrue(Files.readString(f.fileA()).contains("edited.example.com"));
+        else assertEquals(original, Files.readString(f.fileA()));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"Save,true", "Discard,true", "Cancel,true", "Save,false", "Discard,false", "Cancel,false"})
+    void treeNavigationProtectsUnsavedEdits(String choice, boolean toRoot) throws Exception {
+        Fixture f = fixture();
+        String original = Files.readString(f.fileA());
+        onFx(() -> {
+            TreeItem<String> originalItem = f.tree().getRoot().getChildren().getFirst();
+            f.tree().getSelectionModel().select(originalItem);
+            ((TextField) f.view().getRoot().lookup("#nameserverField")).setText("edited.example.com");
+            Platform.runLater(() -> clickDialog(choice));
+            TreeItem<String> destination = toRoot ? f.tree().getRoot() : f.tree().getRoot().getChildren().get(1);
+            f.tree().getSelectionModel().select(destination);
+            if (choice.equals("Cancel")) {
+                assertEquals(originalItem, f.tree().getSelectionModel().getSelectedItem());
+                assertEquals("example.com", f.desk().zone().getZone());
+                assertTrue(f.desk().zone().isDirty());
+            } else {
+                assertEquals(destination, f.tree().getSelectionModel().getSelectedItem());
+                if (toRoot) assertNull(f.desk().zone());
+                else assertEquals("example.net", f.desk().zone().getZone());
+            }
+            return null;
+        });
+        if (choice.equals("Save")) assertTrue(Files.readString(f.fileA()).contains("edited.example.com"));
+        else assertEquals(original, Files.readString(f.fileA()));
+    }
+
+    @Test
+    void invalidDomainShowsItsErrorInsteadOfThePreviousDomainsDetails() throws Exception {
+        Fixture f = fixture();
+        Files.writeString(f.directoryA().resolve("bad.domain"), "invalid JSON");
+        onFx(() -> {
+            menu(f, 1).fire();
+            f.tree().getSelectionModel().select(f.tree().getRoot().getChildren().get(1));
+            assertNotNull(f.desk().zone());
+            f.tree().getSelectionModel().select(f.tree().getRoot().getChildren().getFirst());
+            assertNull(f.desk().zone());
+            assertNull(f.view().getRoot().lookup("#nameserverField"));
+            assertTrue(f.view().getRoot().lookupAll(".label").stream().filter(Label.class::isInstance)
+                    .map(Label.class::cast).anyMatch(label -> label.getText().contains("bad is invalid")));
             assertTrue(f.files().calls.isEmpty());
-            Attributes.set(f.view().getViewModel(), field, old);
-            run(f, zoneAction, true);
-            return null;
-        });
-        assertNotNull(f.files().calls.poll(10, TimeUnit.SECONDS));
-    }
-
-    @Test
-    void changedOrFailedReloadCannotOpenAStaleSelection() throws Exception {
-        Fixture f = fixture();
-        onFx(() -> {
-            TextField zones = (TextField) f.view().getRoot().lookup("#zonesField");
-            zones.setText(f.zonesB().toString());
-            f.catalogController().open();
-            assertNull(f.desk().zone());
-            zones.setText(temp.resolve("missing").toString());
-            f.catalogController().reload();
-            f.catalogController().open();
-            assertNull(f.desk().zone());
-            zones.setText(f.zonesA().toString());
-            f.catalogController().open();
-            assertEquals(f.fileA(), Path.of(f.desk().zone().getSourcePath()));
             return null;
         });
     }
 
     @Test
-    void successfulReloadReplacesContextAndClearsOldEditorAndSelection() throws Exception {
+    void reconciliationUsesTheNewDirectoryAfterOpeningIt() throws Exception {
         Fixture f = fixture();
         onFx(() -> {
-            f.catalogController().open();
-            ((TextField) f.view().getRoot().lookup("#zonesField")).setText(f.zonesB().toString());
-            ((TextField) f.view().getRoot().lookup("#keysField")).setText(f.keysB().toString());
-            f.catalogController().reload();
-            assertNull(f.desk().zone());
-            assertNull(f.desk().catalog().getSelected());
-            Attributes.set(f.view().getViewModel(), "selected", f.desk().catalog().getEntries().getFirst());
-            f.catalogController().open();
-            assertEquals(f.fileB(), Path.of(f.desk().zone().getSourcePath()));
+            f.controller().choice = f.directoryB();
+            menu(f, 0).fire();
+            f.tree().getSelectionModel().select(f.tree().getRoot().getChildren().getFirst());
             f.context().getComponent(ZoneController.class).dryRun();
             return null;
         });
         Invocation call = f.files().calls.poll(10, TimeUnit.SECONDS);
         assertNotNull(call);
-        assertEquals(f.zonesB(), call.zones());
-        assertEquals(f.keysB(), call.keys());
+        assertEquals(f.directoryB(), call.directory());
+        assertEquals("other.example", call.zone());
     }
 
-    private static void run(Fixture f, boolean zone, boolean dry) {
-        if (zone) {
-            ZoneController controller = f.context().getComponent(ZoneController.class);
-            if (dry) controller.dryRun(); else controller.reconcile();
-        } else {
-            if (dry) f.catalogController().dryRun(); else f.catalogController().reconcile();
+    @Test
+    void recentMenuReopensImmediatelyPromotesHistoryAndFiltersDeletedFoldersOnShowing() throws Exception {
+        Fixture f = fixture();
+        onFx(() -> {
+            f.controller().choice = f.directoryB();
+            menu(f, 0).fire();
+            Menu recent = (Menu) menu(f, 2);
+            assertEquals(List.of(f.directoryB().toRealPath().toString(), f.directoryA().toRealPath().toString()),
+                    recent.getItems().stream().map(MenuItem::getText).toList());
+            recent.getItems().get(1).fire();
+            assertEquals(f.directoryA().toRealPath(), f.desk().requireLoadedDirectory());
+            assertEquals("example.com", f.tree().getRoot().getChildren().getFirst().getValue());
+            assertEquals(f.directoryA().toRealPath().toString(), recent.getItems().getFirst().getText());
+            Files.delete(f.directoryB().resolve("other.example.domain"));
+            Files.delete(f.directoryB().resolve("dnscheck.key"));
+            Files.delete(f.directoryB());
+            javafx.event.Event.fireEvent(recent, new javafx.event.Event(Menu.ON_SHOWING));
+            assertEquals(1, recent.getItems().size());
+            assertFalse(recent.getItems().getFirst().isMnemonicParsing());
+            assertEquals(List.of(f.directoryA().toRealPath()),
+                    new RecentDirectories(temp.resolve("settings/config.json")).existingDirectories());
+            return null;
+        });
+    }
+
+    @Test
+    void unreadableHistoryDoesNotPreventOpeningDirectoriesAndIsNotOverwritten() throws Exception {
+        Fixture f = fixture();
+        Path configuration = temp.resolve("settings/config.json");
+        Files.writeString(configuration, "broken config");
+        onFx(() -> {
+            f.controller().choice = f.directoryB();
+            menu(f, 0).fire();
+            assertEquals(f.directoryB(), f.desk().requireLoadedDirectory());
+            assertEquals("other.example", f.tree().getRoot().getChildren().getFirst().getValue());
+            Menu recent = (Menu) menu(f, 2);
+            assertTrue(recent.getItems().getFirst().isDisable());
+            assertEquals("broken config", Files.readString(configuration));
+            return null;
+        });
+    }
+
+    private static MenuItem menu(Fixture f, int index) {
+        return ((MenuBar) f.view().getRoot().lookup("#fileMenuBar")).getMenus().getFirst().getItems().get(index);
+    }
+
+    private static void clickDialog(String text) {
+        for (javafx.stage.Window window : List.copyOf(javafx.stage.Window.getWindows())) {
+            if (window.isShowing() && window.getScene().getRoot() instanceof DialogPane pane) {
+                ButtonType choice = pane.getButtonTypes().stream().filter(button -> button.getText().equals(text)
+                        || text.equals("Cancel") && button.getButtonData() == ButtonBar.ButtonData.CANCEL_CLOSE)
+                        .findFirst().orElseThrow();
+                ((Button) pane.lookupButton(choice)).fire();
+                return;
+            }
         }
+        fail("Expected unsaved changes dialog");
     }
 
     private Fixture fixture() throws Exception {
-        Path zonesA = temp.resolve("a");
-        Path zonesB = temp.resolve("b");
-        Path keysA = Files.createDirectories(temp.resolve("keys-a"));
-        Path keysB = Files.createDirectories(temp.resolve("keys-b"));
-        Path fileA = zoneFile(zonesA, "ns-a.example.com");
-        Path fileB = zoneFile(zonesB, "ns-b.example.com");
+        Path directoryA = temp.resolve("a");
+        Path directoryB = temp.resolve("b");
+        Path fileA = zoneFile(directoryA, "example.com", "ns-a.example.com");
+        zoneFile(directoryA, "example.net", "ns-a.example.net");
+        zoneFile(directoryB, "other.example", "ns-b.example.com");
         return onFx(() -> {
             RecordingFiles files = new RecordingFiles();
+            RecentDirectories recent = new RecentDirectories(temp.resolve("settings/config.json"));
             ApplicationContext context = new ApplicationContext(DnsCheckFxApp.class) {
+                private ChoosingController controller;
                 @Override
                 public <T> T getComponent(Class<? extends T> type) {
-                    if (type == ZoneFiles.class) {
-                        return type.cast(files);
+                    if (type == ZoneFiles.class) return type.cast(files);
+                    if (type == RecentDirectories.class) return type.cast(recent);
+                    if (type == CatalogController.class) {
+                        if (controller == null) controller = new ChoosingController(getComponent(Desk.class), files, recent);
+                        return type.cast(controller);
                     }
                     return super.getComponent(type);
                 }
             };
             Desk desk = context.getComponent(Desk.class);
             CatalogSession session = new CatalogSession();
-            session.setZonesDirectory(zonesA.toString());
-            session.setKeysDirectory(keysA.toString());
+            session.setDirectory(directoryA.toString());
             desk.prepare(session, context);
             LoadedView view = ViewLoader.load(CatalogController.class.getResource("Catalog.fxml"), session, context);
-            Attributes.set(view.getViewModel(), "selected", session.getEntries().getFirst());
-            return new Fixture(context, desk, view, context.getComponent(CatalogController.class), files,
-                    zonesA, zonesB, keysA, keysB, fileA, fileB);
+            new javafx.scene.Scene(view.getRoot(), 1200, 800);
+            view.getRoot().applyCss();
+            view.getRoot().layout();
+            return new Fixture(context, desk, view, (ChoosingController) context.getComponent(CatalogController.class),
+                    files, directoryA, directoryB, fileA);
         });
     }
 
-    private static Path zoneFile(Path zones, String server) throws Exception {
-        Path file = Files.createDirectories(zones.resolve("admin.u")).resolve("example.com.json");
+    private static Path zoneFile(Path directory, String zone, String server) throws Exception {
+        Path file = Files.createDirectories(directory).resolve(zone + ".domain");
         Files.writeString(file, """
-                {"zone":"example.com", "nameserver":"%s", "keyFile":"admin.u/example.com.key", "records":[]}
-                """.formatted(server));
+                {"zone":"%s", "nameserver":"%s", "keyFile":"dnscheck.key", "records":[]}
+                """.formatted(zone, server));
+        Files.writeString(directory.resolve("dnscheck.key"), """
+                key "test" { algorithm hmac-sha256; secret "dGVzdA=="; };
+                """);
         return file;
     }
 
@@ -193,17 +300,29 @@ class CatalogLocationTest {
         return task.get(10, TimeUnit.SECONDS);
     }
 
-    private record Fixture(ApplicationContext context, Desk desk, LoadedView view,
-                           CatalogController catalogController, RecordingFiles files,
-                           Path zonesA, Path zonesB, Path keysA, Path keysB, Path fileA, Path fileB) {}
-    private record Invocation(Path zones, Path keys, boolean dryRun) {}
+    private record Fixture(ApplicationContext context, Desk desk, LoadedView view, ChoosingController controller,
+                           RecordingFiles files, Path directoryA, Path directoryB, Path fileA) {
+        @SuppressWarnings("unchecked")
+        TreeView<String> tree() { return (TreeView<String>) view.getRoot().lookup("#domainsTree"); }
+    }
+    private record Invocation(Path directory, String zone) {}
+
+    private static class ChoosingController extends CatalogController {
+        Path choice;
+        ChoosingController(Desk desk, ZoneFiles files, RecentDirectories recent) { super(desk, files, recent); }
+        @Override protected Path chooseDirectory() { return choice; }
+    }
 
     private static class RecordingFiles extends ZoneFiles {
         final LinkedBlockingQueue<Invocation> calls = new LinkedBlockingQueue<>();
         @Override
-        public ZoneReconciliationResult reconcile(Path zones, Path keys, String owner, String zone, boolean dryRun) {
-            calls.add(new Invocation(zones, keys, dryRun));
-            return ZoneReconciliationResult.failed(owner + "/" + zone, "Offline test result");
+        public de.neitzel.dnscheck.core.model.LiveZone readLive(de.neitzel.dnscheck.core.model.ZoneDefinition definition) {
+            return new de.neitzel.dnscheck.core.model.LiveZone(definition.zone(), 3600, List.of());
+        }
+        @Override
+        public ZoneReconciliationResult reconcile(Path directory, String zone, boolean dryRun) {
+            calls.add(new Invocation(directory, zone));
+            return ZoneReconciliationResult.failed(zone, "Offline test result");
         }
     }
 }

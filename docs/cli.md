@@ -1,93 +1,83 @@
 # CLI
 
-The `dnscheck` CLI reconciles live DNS against zone definition JSON files without running the full service. It does not use the operator database or HTTP API.
+The CLI and [desktop](../dnscheck-fx/README.md) work directly on one local directory.
+They do not use service authentication, owner folders, or its separate zone/key directories.
 
-Use the CLI for ad-hoc runs, CI checks, or cron jobs on hosts that should not run the service. The service remains the primary control plane for scheduled reconciliation, the UI, and operator auth.
+```text
+checkdns/
+  example.com.domain
+  example.net.domain
+  dnscheck.key
+```
 
-The CLI reads the same **scoped owner-folder** layout as the service (`{username}.u` / `{groupname}.g` under the zones and keys directories). See [Configure](configure.md) and [Migration](migration-scoped-ownership.md).
+Definitions are JSON named exactly `<zone>.domain`. The `zone` field must match
+the filename. Each `keyFile` is a filename in the same directory, such as
+`dnscheck.key`; several definitions may share a key. Keys use BIND native syntax.
+Only immediate `.domain` files are scanned. Subdirectories and unrelated files
+are ignored. Paths and symlinks escaping the selected directory are rejected.
+Unknown JSON fields are rejected, including fields within records.
 
-## Installation
+```json
+{
+  "zone": "example.com",
+  "nameserver": "ns1.example.com",
+  "keyFile": "dnscheck.key",
+  "records": [
+    { "name": "www", "type": "A", "rdata": "192.0.2.10", "ttl": 300 }
+  ]
+}
+```
 
-Install `dnscheck-cli.jar` from a release (see [Install](install.md#install-the-cli)).
+An omitted or null TTL ignores TTL; `-1` uses the live zone default and a positive
+TTL is enforced. Deletion markers use `"delete": true` with an optional
+`rdataPattern`. Records not managed by the definition remain untouched.
 
 ## Usage
 
 ```bash
-dnscheck reconcile [CATALOG_ENTRY] [OPTIONS]
+dnscheck reconcile [ZONE] [--directory PATH] [--dry-run]
 ```
 
-| Argument / option | Description |
-|-------------------|-------------|
-| `CATALOG_ENTRY` | Optional catalog identity `owner/zoneName` (e.g. `admin.u/example.com`). Omit to reconcile **all** catalog entries. |
-| `--dry-run` | Detect drift without applying `nsupdate` |
-| `--zones-dir` | Zone catalog directory (default `./zones` or `DNSCHECK_ZONES_DIR`) |
-| `--keys-dir` | TSIG keys directory (default `./keys` or `DNSCHECK_KEYS_DIR`) |
-
-Bare DNS zone names (for example `example.com` without an owner folder) are not valid catalog entry targets. Use `owner/zoneName`.
-
-### Examples
-
-Dry-run all zones:
+- `ZONE`: bare zone name, such as `example.com`. Omit to process all definitions.
+- `--directory`: directory containing definitions and keys. Defaults to
+  `DNSCHECK_DIRECTORY`, or the current directory when unset.
+- `--dry-run`: retrieve live DNS and report drift without applying updates.
 
 ```bash
-dnscheck reconcile --dry-run
-```
-
-Reconcile one catalog entry live:
-
-```bash
-dnscheck reconcile admin.u/example.com --zones-dir /var/lib/dnscheck/zones --keys-dir /var/lib/dnscheck/keys
-```
-
-Help:
-
-```bash
-dnscheck --help
+dnscheck reconcile --directory ./tmp/checkdns --dry-run
+dnscheck reconcile example.com --directory /var/lib/dnscheck/local
 dnscheck reconcile --help
 ```
 
-## Output
+Each outcome is printed under its bare zone name: `SUCCESS`, `RECONCILED`,
+`DRIFT_DETECTED`, or `FAILED`. Planned changes are indented; errors go to stderr.
+Invalid definitions and missing/invalid keys are reported individually. Other
+valid zones continue. Exit code is 1 if any zone fails, the directory is empty,
+or it cannot be read; otherwise it is 0. Argument errors return 2.
 
-For each catalog entry, the CLI prints the catalog ref (`owner/zoneName`) and **zone outcome**:
+## Migration from the previous CLI/FX layout
 
-| Outcome | Meaning |
-|---------|---------|
-| `SUCCESS` | No drift |
-| `RECONCILED` | Drift was corrected |
-| `FAILED` | Error (message on stderr) |
-| `DRIFT_DETECTED` | Dry-run: changes identified but not applied |
-
-Planned changes are listed as indented lines. Exit code **0** if no zone failed; **1** if any zone outcome is `FAILED`.
-
-Flat JSON files at the zones directory root are ignored (same as the service). Optional log warnings may note ignored root entries during migration.
+The old `--zones-dir`, `--keys-dir`, `DNSCHECK_ZONES_DIR`, `DNSCHECK_KEYS_DIR`,
+and `owner/zone` targets are no longer supported by CLI/FX. Copy the desired
+JSON definitions and their keys into one directory, rename definitions from
+`.json` to `.domain`, and replace scoped `keyFile` values with local filenames.
+Resolve filename collisions explicitly when combining owner folders.
+The service retains its scoped `.json` layout and its existing configuration.
+CLI/FX no longer operate directly on service storage.
 
 ## Cron
 
-Example `/etc/cron.d/dnscheck` — nightly dry-run report:
-
 ```cron
-0 2 * * * dnscheck /usr/bin/java -jar /usr/local/lib/dnscheck-cli.jar reconcile --dry-run --zones-dir /var/lib/dnscheck/zones --keys-dir /var/lib/dnscheck/keys >> /var/log/dnscheck-cron.log 2>&1
+0 2 * * * dnscheck /usr/bin/java -jar /usr/local/lib/dnscheck-cli.jar reconcile --dry-run --directory /var/lib/dnscheck/local >> /var/log/dnscheck-cron.log 2>&1
 ```
-
-Do not schedule CLI live reconciliation on the same interval as the service scheduler unless you intend overlapping passes.
 
 ## Docker
 
-The release image supports a `cli` entrypoint:
+Mount a local directory explicitly; the service's existing volumes are separate:
 
 ```bash
-docker compose run --rm dnscheck cli reconcile --dry-run
-docker compose run --rm dnscheck cli reconcile admin.u/example.com
+docker compose run --rm -v "$PWD/checkdns:/data/local" dnscheck cli reconcile --directory /data/local --dry-run
 ```
 
-The Compose file bind-mounts `./zones` and `./keys` into `/data/zones` and `/data/keys`.
-
-Run the service (default entrypoint):
-
-```bash
-docker compose up -d dnscheck
-```
-
-## API alternative
-
-For authenticated automation against the running service, use the REST API (`POST /api/v1/reconcile`, `POST /api/v1/zones/{owner}/{zoneName}/reconcile`). See `/api/v1/openapi.json`.
+For authenticated automation against service storage, use its REST API instead
+(`POST /api/v1/reconcile` or `POST /api/v1/zones/{owner}/{zoneName}/reconcile`).

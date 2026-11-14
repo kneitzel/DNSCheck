@@ -4,7 +4,6 @@ import de.neitzel.dnscheck.fx.model.CatalogSession;
 import de.neitzel.dnscheck.fx.model.RecordEditor;
 import de.neitzel.dnscheck.fx.model.ZoneEditor;
 import de.neitzel.dnscheck.fx.view.CatalogController;
-import de.neitzel.dnscheck.fx.view.RecordForm;
 import de.neitzel.dnscheck.fx.view.ZoneController;
 import de.neitzel.fx.view.LoadedView;
 import de.neitzel.fx.view.ViewLoader;
@@ -12,7 +11,6 @@ import de.neitzel.injection.ApplicationContext;
 import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
@@ -34,12 +32,15 @@ import static org.junit.jupiter.api.Assertions.fail;
  * Loads the catalog and a zone definition the way the desktop application does.
  */
 class DnsCheckFxLoadsTest {
+    @org.junit.jupiter.api.io.TempDir
+    java.nio.file.Path temp;
 
     /**
      * Starts the JavaFX toolkit once for this class.
      */
     @BeforeAll
     static void startJavaFx() throws InterruptedException {
+        Platform.setImplicitExit(false);
         CountDownLatch started = new CountDownLatch(1);
         try {
             Platform.startup(started::countDown);
@@ -57,28 +58,34 @@ class DnsCheckFxLoadsTest {
     @Test
     void catalogAndZoneViewsLoad() throws Exception {
         onFx(() -> {
-            ApplicationContext context = new ApplicationContext(DnsCheckFxApp.class);
+            RecentDirectories recent = new RecentDirectories(temp.resolve("config.json"));
+            ApplicationContext context = new ApplicationContext(DnsCheckFxApp.class) {
+                @Override public <T> T getComponent(Class<? extends T> type) {
+                    return type == RecentDirectories.class ? type.cast(recent) : super.getComponent(type);
+                }
+            };
             Desk desk = context.getComponent(Desk.class);
             CatalogSession session = new CatalogSession();
-            session.setZonesDirectory("/no/such/zones");
-            session.setKeysDirectory("/no/such/keys");
+            session.setDirectory("/no/such/zones");
             session.setEntries(new ArrayList<>());
             session.setOutcome("");
             desk.prepare(session, context);
 
             LoadedView catalog = ViewLoader.load(
                     CatalogController.class.getResource("Catalog.fxml"), session, context);
+            new javafx.scene.Scene(catalog.getRoot(), 1200, 800);
+            catalog.getRoot().applyCss();
+            catalog.getRoot().layout();
             assertTrue(catalog.getViewModel().getLatestMessage().getText().contains("does not exist"));
-            assertEquals("Owner", headerText(catalog.getRoot(), "entriesTable", 0));
-            assertEquals("Zone", headerText(catalog.getRoot(), "entriesTable", 1));
-            assertEquals("Valid", headerText(catalog.getRoot(), "entriesTable", 4));
-            assertEquals(140, headerCell(catalog.getRoot(), "entriesTable", 0).getPrefWidth());
+            assertEquals("Zone", headerText(catalog.getRoot(), "entriesTable", 0));
+            assertEquals("Nameserver", headerText(catalog.getRoot(), "entriesTable", 1));
+            assertEquals("Valid", headerText(catalog.getRoot(), "entriesTable", 3));
+            assertEquals(180, headerCell(catalog.getRoot(), "entriesTable", 0).getPrefWidth());
 
             ZoneEditor editor = new ZoneEditor();
-            editor.setOwnerFolder("admin.u");
             editor.setZone("example.com");
             editor.setNameserver("ns1.example.com");
-            editor.setKeyFile("admin.u/example.com.key");
+            editor.setKeyFile("dnscheck.key");
             editor.setRecords(new ArrayList<>());
             editor.setOutcome("");
             RecordEditor record = new RecordEditor();
@@ -89,20 +96,12 @@ class DnsCheckFxLoadsTest {
             desk.edit(editor);
 
             LoadedView zone = ViewLoader.load(ZoneController.class.getResource("Zone.fxml"), editor, context);
-            assertEquals(1, count(zone.getRoot(), RecordForm.class));
-            assertEquals("Name", headerText(zone.getRoot(), "recordTable", 0));
-            assertEquals("Delete", headerText(zone.getRoot(), "recordTable", 5));
-            assertEquals(160, headerCell(zone.getRoot(), "recordTable", 0).getPrefWidth());
+            var table = (javafx.scene.control.TableView<?>) zone.getRoot().lookup("#recordTable");
+            assertEquals(1, table.getItems().size());
+            assertEquals("Name", table.getColumns().get(1).getText());
+            assertEquals("Status", table.getColumns().get(5).getText());
+            assertEquals("192.0.2.10", ((de.neitzel.dnscheck.fx.model.RecordRow) table.getItems().getFirst()).value());
             assertEquals("ns1.example.com", text(zone.getRoot(), "ns1.example.com"));
-            assertEquals("192.0.2.10", text(zone.getRoot(), "192.0.2.10"));
-
-            RecordForm row = record(zone.getRoot());
-            Button remove = (Button) row.getChildren().get(row.getChildren().size() - 1);
-            assertEquals("Remove", remove.getText());
-            assertEquals(Region.USE_COMPUTED_SIZE, remove.getPrefWidth());
-            remove.fire();
-            assertEquals(0, editor.getRecords().size());
-            assertEquals(0, count(zone.getRoot(), RecordForm.class));
         });
     }
 
@@ -131,73 +130,6 @@ class DnsCheckFxLoadsTest {
         ScrollPane headerScroll = (ScrollPane) root.lookup("#" + tableId).lookup(".table-header-scroll");
         HBox header = (HBox) headerScroll.getContent();
         return (Region) header.getChildren().get(index);
-    }
-
-    /**
-     * Returns the record row.
-     *
-     * @param root the loaded zone view
-     * @return the row
-     */
-    private static RecordForm record(Parent root) {
-        RecordForm found = findRecord(root);
-        if (found == null) {
-            fail("record row was not loaded");
-        }
-        return found;
-    }
-
-    /**
-     * Finds the record row under a node.
-     *
-     * @param node the node
-     * @return the row, or {@code null}
-     */
-    private static RecordForm findRecord(Node node) {
-        if (node instanceof RecordForm row) {
-            return row;
-        }
-        if (node instanceof ScrollPane scroll && scroll.getContent() != null) {
-            RecordForm found = findRecord(scroll.getContent());
-            if (found != null) {
-                return found;
-            }
-        }
-        if (node instanceof Parent parent) {
-            for (Node child : parent.getChildrenUnmodifiable()) {
-                if (node instanceof ScrollPane scroll && child == scroll.getContent()) {
-                    continue;
-                }
-                RecordForm found = findRecord(child);
-                if (found != null) {
-                    return found;
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Counts nodes of the given type under a root.
-     *
-     * @param node the node
-     * @param type the node type
-     * @return the number of matching nodes
-     */
-    private static int count(Node node, Class<?> type) {
-        int found = type.isInstance(node) ? 1 : 0;
-        if (node instanceof ScrollPane scroll && scroll.getContent() != null) {
-            found += count(scroll.getContent(), type);
-        }
-        if (node instanceof Parent parent) {
-            for (Node child : parent.getChildrenUnmodifiable()) {
-                if (node instanceof ScrollPane scroll && child == scroll.getContent()) {
-                    continue;
-                }
-                found += count(child, type);
-            }
-        }
-        return found;
     }
 
     /**

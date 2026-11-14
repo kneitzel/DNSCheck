@@ -79,7 +79,7 @@ The configured interval at which DNSCheck automatically performs a reconciliatio
 _Avoid_: Cron, timer, job
 
 **Zone catalog**:
-The set of zone definitions DNSCheck manages, discovered by scanning scoped owner folders under a configured location. Each zone definition lives in exactly one owner folder.
+The set of zone definitions DNSCheck manages. The service identifies entries by owner and zone; CLI and desktop identify them by zone within a local directory.
 _Avoid_: Zones directory, config folder, zone list
 
 **Owner folder**:
@@ -95,7 +95,7 @@ The operator or group that owns a zone definition, identified by the owner folde
 _Avoid_: Zone holder, catalog owner, file owner
 
 **Zone catalog entry**:
-One zone definition file in the catalog, identified by its owner folder and zone name (e.g. `admin.u` and `example.com`). The same DNS zone name may appear in multiple catalog entries under different owners; each entry is reconciled independently.
+One zone definition in the catalog. Service entries have an owner and zone name; local CLI and desktop entries have a zone name within the selected directory.
 _Avoid_: Zone ID, zone path, zone record
 
 **TTL policy**:
@@ -111,7 +111,7 @@ A DNS zone managed by BIND that DNSCheck is authorized to query and update.
 _Avoid_: Domain (too broad — a domain may span multiple zones)
 
 **Zone definition**:
-A JSON file that fully describes one DNS zone: the zone name (must match the filename), expected records, the nameserver to contact, and the TSIG key for authenticated AXFR and `nsupdate`. Stored under an owner folder in the zone catalog; separate from operator data in the database.
+A JSON file that fully describes one DNS zone: the zone name (must match the filename), expected records, the nameserver to contact, and the TSIG key for authenticated AXFR and `nsupdate`. Shared by local CLI and desktop use; service definitions also belong to an owner and remain separate from operator data.
 _Avoid_: Zone config, zone file, zone spec
 
 **TSIG key**:
@@ -119,7 +119,7 @@ Shared secret credentials used to authenticate zone transfers (AXFR) and dynamic
 _Avoid_: API key, auth token, credentials
 
 **Key file**:
-An external file in BIND native key syntax holding TSIG key name, algorithm, and secret for a zone. Stored under an owner folder in the keys directory and referenced from the zone definition by scoped path relative to that directory.
+An external file in BIND native key syntax holding TSIG key name, algorithm, and secret for a zone. Referenced by a zone definition; several definitions may share one key file. Service references are scoped by owner, while local CLI and desktop references belong to the selected directory.
 _Avoid_: Credentials file, secret file, tsig.conf
 
 **Live zone**:

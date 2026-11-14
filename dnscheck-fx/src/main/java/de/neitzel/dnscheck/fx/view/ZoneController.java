@@ -1,200 +1,240 @@
 package de.neitzel.dnscheck.fx.view;
 
+import de.neitzel.dnscheck.core.model.LiveZone;
+import de.neitzel.dnscheck.core.model.ZoneDefinition;
 import de.neitzel.dnscheck.core.reconcile.ZoneReconciliationResult;
-import de.neitzel.dnscheck.fx.Attributes;
-import de.neitzel.dnscheck.fx.Desk;
-import de.neitzel.dnscheck.fx.OutcomeText;
-import de.neitzel.dnscheck.fx.ZoneFiles;
-import de.neitzel.dnscheck.fx.model.RecordEditor;
-import de.neitzel.dnscheck.fx.model.ZoneEditor;
+import de.neitzel.dnscheck.fx.*;
+import de.neitzel.dnscheck.fx.model.*;
 import de.neitzel.fx.view.HasViewModel;
 import de.neitzel.fx.view.Message;
 import de.neitzel.fx.view.ViewModel;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import javafx.application.Platform;
+import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.beans.property.SimpleObjectProperty;
+import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
+import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
+import javafx.scene.layout.VBox;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.function.Function;
 
-/**
- * Controller for one open zone definition.
- */
+/** A merged file/live record view with explicit popup editing and background network operations. */
 @Singleton
 public class ZoneController implements HasViewModel {
-
-    /**
-     * The desk that holds the open zone.
-     */
     private final Desk desk;
-
-    /**
-     * Catalog access used to save and reconcile the open zone.
-     */
     private final ZoneFiles zoneFiles;
-
-    /**
-     * The zone ViewModel, set before the bindings run.
-     */
     private ViewModel viewModel;
+    private ZoneEditor editor;
+    private LiveZone liveSnapshot;
+    private long loadSequence;
 
-    /**
-     * Whether a reconciliation run is already going.
-     */
-    private boolean busy;
+    @FXML private VBox zoneRoot;
+    @FXML private Label liveStatus;
+    @FXML private TableView<RecordRow> recordTable;
+    @FXML private TableColumn<RecordRow, RecordRow.Kind> kindColumn;
+    @FXML private TableColumn<RecordRow, String> nameColumn;
+    @FXML private TableColumn<RecordRow, String> typeColumn;
+    @FXML private TableColumn<RecordRow, String> valueColumn;
+    @FXML private TableColumn<RecordRow, String> ttlColumn;
+    @FXML private TableColumn<RecordRow, String> statusColumn;
 
-    /**
-     * Creates the controller.
-     *
-     * @param desk      the desk
-     * @param zoneFiles catalog access
-     */
     @Inject
     public ZoneController(Desk desk, ZoneFiles zoneFiles) {
         this.desk = desk;
         this.zoneFiles = zoneFiles;
     }
 
-    /**
-     * Receives the ViewModel for the zone that was just loaded.
-     *
-     * @param viewModel the zone ViewModel
-     */
     @Override
     public void setViewModel(ViewModel viewModel) {
         this.viewModel = viewModel;
+        this.editor = desk.zone();
+        liveSnapshot = null;
+        column(nameColumn, RecordRow::name);
+        column(typeColumn, RecordRow::type);
+        column(valueColumn, RecordRow::value);
+        column(ttlColumn, RecordRow::ttl);
+        column(statusColumn, RecordRow::status);
+        kindColumn.setCellValueFactory(cell -> new SimpleObjectProperty<>(cell.getValue().kind()));
+        kindColumn.setCellFactory(column -> new TableCell<>() {
+            @Override protected void updateItem(RecordRow.Kind kind, boolean empty) {
+                super.updateItem(kind, empty);
+                setText(empty || kind == null ? null : switch (kind) { case ENFORCED -> "✓"; case REMOVAL -> "−"; case LIVE -> "●"; });
+                setTooltip(empty || kind == null ? null : new Tooltip(switch (kind) {
+                    case ENFORCED -> "Enforced entry"; case REMOVAL -> "Enforced removal"; case LIVE -> "Live entry";
+                }));
+                setAccessibleText(getTooltip() == null ? "" : getTooltip().getText());
+            }
+        });
+        recordTable.setRowFactory(table -> {
+            TableRow<RecordRow> row = new TableRow<>() {
+                @Override protected void updateItem(RecordRow item, boolean empty) {
+                    super.updateItem(item, empty);
+                    pseudoClassStateChanged(PseudoClass.getPseudoClass("file-entry"), !empty && item != null && item.kind() == RecordRow.Kind.ENFORCED);
+                    pseudoClassStateChanged(PseudoClass.getPseudoClass("removal-entry"), !empty && item != null && item.kind() == RecordRow.Kind.REMOVAL);
+                    pseudoClassStateChanged(PseudoClass.getPseudoClass("live-entry"), !empty && item != null && item.kind() == RecordRow.Kind.LIVE);
+                }
+            };
+            row.setOnMouseClicked(event -> { if (event.getClickCount() == 2 && !row.isEmpty()) showRecord(row.getItem()); });
+            return row;
+        });
+        recordTable.setOnKeyPressed(event -> { if (event.getCode() == KeyCode.ENTER) editRecord(); });
+        showRows();
+        refreshLive();
     }
 
-    /**
-     * Appends an empty A record.
-     */
-    @FXML
-    public void addRecord() {
-        RecordEditor record = new RecordEditor();
-        record.setType("A");
-        desk.zone().getRecords().add(record);
+    private static void column(TableColumn<RecordRow, String> column, Function<RecordRow, String> value) {
+        column.setCellValueFactory(cell -> new ReadOnlyStringWrapper(value.apply(cell.getValue())));
     }
 
-    /**
-     * Writes the zone definition file.
-     */
-    @FXML
-    public void save() {
-        if (write()) {
-            viewModel.addMessage(new Message(
-                    Message.Severity.INFO, "Saved " + desk.zone().getZone() + ".", "save"));
-        }
-    }
-
-    /**
-     * Saves the zone definition, then dry-runs it.
-     */
-    @FXML
-    public void dryRun() {
-        run(true);
-    }
-
-    /**
-     * Saves the zone definition, then reconciles it.
-     */
-    @FXML
-    public void reconcile() {
-        run(false);
-    }
-
-    /**
-     * Saves the open zone, then dry-runs or reconciles it.
-     *
-     * @param dryRun {@code true} to report drift without sending {@code nsupdate}
-     */
-    private void run(boolean dryRun) {
-        if (busy) {
-            viewModel.addMessage(new Message(
-                    Message.Severity.WARN, "A reconciliation run is already going.", "reconcile"));
-            return;
-        }
-        Desk.CatalogDirectories directories;
-        try {
-            directories = desk.requireLoadedDirectories();
-        } catch (RuntimeException failure) {
-            viewModel.addMessage(new Message(Message.Severity.ERROR, failure.getMessage(), "reconcile"));
-            return;
-        }
-        if (!write()) {
-            return;
-        }
-        busy = true;
-        ZoneEditor editor = desk.zone();
-        ViewModel target = viewModel;
-        Attributes.set(target, "outcome", dryRun ? "Dry-run…" : "Reconciling…");
-        Path zones = directories.zones();
-        Path keys = directories.keys();
+    @FXML public void refreshLive() {
+        if (editor.isApplying()) return;
+        if (editor.isDirty()) { note(Message.Severity.WARN, "Save zone settings before refreshing live DNS."); return; }
+        ZoneEditor opened = editor;
+        ZoneDefinition definition = definition();
+        long sequence = ++loadSequence;
+        liveSnapshot = null;
+        showRows();
+        liveStatus.setText("Loading live DNS from " + definition.nameserver() + "…");
         Thread.startVirtualThread(() -> {
-            ZoneReconciliationResult result = reconcile(zones, keys, editor, dryRun);
-            Platform.runLater(() -> finish(editor, target, result));
+            try {
+                LiveZone loaded = zoneFiles.readLive(definition);
+                Platform.runLater(() -> {
+                    if (!current(opened, sequence)) return;
+                    liveSnapshot = loaded;
+                    liveStatus.setText("Live DNS from " + definition.nameserver() + ": " + loaded.records().size() + " records (SOA is read-only).");
+                    showRows();
+                });
+            } catch (Exception failure) {
+                Platform.runLater(() -> {
+                    if (!current(opened, sequence)) return;
+                    liveSnapshot = null;
+                    liveStatus.setText("Live DNS unavailable: " + text(failure) + ". Showing domain-file entries only.");
+                    showRows();
+                });
+            }
         });
     }
 
-    /**
-     * Reconciles the open zone, turning a failure into a failed zone outcome.
-     *
-     * @param zones   the zone catalog directory
-     * @param keys    the keys directory
-     * @param editor  the zone being reconciled
-     * @param dryRun  {@code true} to report drift without sending {@code nsupdate}
-     * @return the zone outcome
-     */
-    private ZoneReconciliationResult reconcile(Path zones, Path keys, ZoneEditor editor, boolean dryRun) {
-        try {
-            return zoneFiles.reconcile(zones, keys, editor.getOwnerFolder(), editor.getZone(), dryRun);
-        } catch (RuntimeException failure) {
-            String message = failure.getMessage();
-            return ZoneReconciliationResult.failed(
-                    editor.getOwnerFolder() + "/" + editor.getZone(),
-                    message == null || message.isBlank() ? "Reconciliation failed." : message);
-        }
+    private boolean current(ZoneEditor opened, long sequence) {
+        return editor == opened && desk.zone() == opened && sequence == loadSequence;
     }
 
-    /**
-     * Writes the zone outcome on the JavaFX thread.
-     * <p>
-     * The open zone's ViewModel receives it when that zone is still open. Otherwise the catalog
-     * ViewModel receives it.
-     *
-     * @param editor the zone that was reconciled
-     * @param target the ViewModel of that zone
-     * @param result the zone outcome
-     */
-    private void finish(ZoneEditor editor, ViewModel target, ZoneReconciliationResult result) {
-        busy = false;
-        ViewModel shown = desk.zone() == editor ? target : desk.catalogView();
-        if (shown == null) {
-            return;
-        }
-        Attributes.set(shown, "outcome", OutcomeText.of(result));
-        shown.addMessage(new Message(
-                OutcomeText.severity(result.outcome()),
-                result.zoneName() + ": " + result.outcome(),
-                "reconcile"));
+    private ZoneDefinition definition() {
+        return editor.getDiskDefinition() == null ? editor.toDefinition() : editor.getDiskDefinition();
     }
 
-    /**
-     * Writes the open zone definition to disk.
-     *
-     * @return {@code true} when the file was written
-     */
+    private void showRows() {
+        recordTable.getItems().setAll(RecordRow.merge(definition(), liveSnapshot));
+    }
+
+    @FXML public void addRecord() { showRecord(null); }
+    @FXML public void editRecord() {
+        RecordRow selected = recordTable.getSelectionModel().getSelectedItem();
+        if (selected == null) { note(Message.Severity.WARN, "Select a record to view its details."); return; }
+        showRecord(selected);
+    }
+
+    protected RecordDialog dialog(RecordRow row) {
+        return new RecordDialog(zoneRoot.getScene() == null ? null : zoneRoot.getScene().getWindow(), editor.getZone(), row);
+    }
+
+    private void showRecord(RecordRow row) {
+        if (editor.isApplying()) return;
+        if (editor.isDirty()) { note(Message.Severity.WARN, "Save zone settings before editing records."); return; }
+        dialog(row).showAndWait().ifPresent(this::apply);
+    }
+
+    private void apply(RecordChange request) {
+        final Path directory;
+        try { directory = desk.requireLoadedDirectory(); }
+        catch (RuntimeException failure) { note(Message.Severity.ERROR, text(failure)); return; }
+        ZoneEditor opened = editor;
+        ZoneDefinition expected = definition();
+        if (!expected.sourcePath().toAbsolutePath().getParent().equals(directory)) {
+            note(Message.Severity.ERROR, "Reload the domain before editing records."); return;
+        }
+        ++loadSequence; // An older AXFR must not overwrite the result of this edit.
+        opened.setApplying(true);
+        zoneRoot.setDisable(true);
+        note(Message.Severity.INFO, request.online() ? "Applying record change…" : "Saving file entry…");
+        Thread.startVirtualThread(() -> {
+            try {
+                ZoneFiles.MutationResult result = zoneFiles.applyRecord(expected, request);
+                Platform.runLater(() -> {
+                    opened.setApplying(false);
+                    if (desk.zone() != opened || editor != opened) return;
+                    zoneRoot.setDisable(false);
+                    opened.acceptDefinition(result.definition());
+                    if (result.onlineAttempted()) {
+                        liveSnapshot = result.live();
+                        liveStatus.setText(result.live() == null ? "Live state is unconfirmed. Refresh live DNS to inspect it."
+                                : "Live DNS refreshed: " + result.live().records().size() + " records.");
+                    }
+                    showRows();
+                    note(result.onlineAttempted() && !result.onlineApplied() ? Message.Severity.ERROR
+                            : result.onlineAttempted() && result.live() == null ? Message.Severity.WARN : Message.Severity.INFO, result.message());
+                });
+            } catch (Exception failure) {
+                Platform.runLater(() -> {
+                    opened.setApplying(false);
+                    if (desk.zone() != opened || editor != opened) return;
+                    zoneRoot.setDisable(false);
+                    note(Message.Severity.ERROR, text(failure));
+                });
+            }
+        });
+    }
+
+    @FXML public void save() {
+        if (editor.isApplying()) return;
+        if (write()) { note(Message.Severity.INFO, "Zone settings saved."); refreshLive(); }
+    }
+    @FXML public void dryRun() { run(true); }
+    @FXML public void reconcile() { run(false); }
+
+    private void run(boolean dryRun) {
+        if (editor.isApplying()) { note(Message.Severity.WARN, "A record operation is already running."); return; }
+        final Path directory;
+        try { directory = desk.requireLoadedDirectory(); }
+        catch (RuntimeException failure) { note(Message.Severity.ERROR, text(failure)); return; }
+        if (!write()) return;
+        ZoneEditor opened = editor;
+        ViewModel target = viewModel;
+        opened.setApplying(true);
+        zoneRoot.setDisable(true);
+        ++loadSequence;
+        note(Message.Severity.INFO, dryRun ? "Dry-run…" : "Reconciling…");
+        Thread.startVirtualThread(() -> {
+            ZoneReconciliationResult result;
+            try { result = zoneFiles.reconcile(directory, opened.getZone(), dryRun); }
+            catch (RuntimeException failure) { result = ZoneReconciliationResult.failed(opened.getZone(), text(failure)); }
+            ZoneReconciliationResult completed = result;
+            Platform.runLater(() -> {
+                opened.setApplying(false);
+                if (desk.zone() != opened || editor != opened) {
+                    Attributes.set(target, "outcome", OutcomeText.of(completed)); return;
+                }
+                zoneRoot.setDisable(false);
+                note(OutcomeText.severity(completed.outcome()), OutcomeText.of(completed));
+                refreshLive();
+            });
+        });
+    }
+
     private boolean write() {
-        try {
-            zoneFiles.save(desk.zone());
-            return true;
-        } catch (RuntimeException | IOException failure) {
-            String message = failure.getMessage();
-            viewModel.addMessage(new Message(
-                    Message.Severity.ERROR,
-                    message == null || message.isBlank() ? "Could not save the zone definition." : message,
-                    "save"));
-            return false;
-        }
+        try { zoneFiles.save(editor); return true; }
+        catch (RuntimeException | IOException failure) { note(Message.Severity.ERROR, text(failure)); return false; }
+    }
+    private void note(Message.Severity severity, String message) {
+        viewModel.addMessage(new Message(severity, message, "records"));
+        Attributes.set(viewModel, "outcome", message);
+    }
+    private static String text(Exception failure) {
+        return failure.getMessage() == null || failure.getMessage().isBlank() ? failure.getClass().getSimpleName() : failure.getMessage();
     }
 }

@@ -7,7 +7,7 @@ import java.util.List;
  *
  * @param zone the DNS zone name this snapshot belongs to.
  * @param defaultTtl the zone default TTL, taken from the SOA minimum field.
- * @param records the live records other than the SOA record.
+ * @param records the transferred records; reconciliation omits SOA, while desktop inspection includes it.
  */
 public record LiveZone(String zone, long defaultTtl, List<DnsRecord> records) {
 

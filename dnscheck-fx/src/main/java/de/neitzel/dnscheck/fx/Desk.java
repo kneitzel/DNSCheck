@@ -34,29 +34,23 @@ public class Desk {
      */
     private ViewModel catalogView;
 
-    private CatalogDirectories loadedDirectories;
+    private Path loadedDirectory;
 
-    /** Directory pair applied by the last successful catalog reload. */
-    public record CatalogDirectories(Path zones, Path keys) {}
-
-    /** Captures both fields before loading; parsing failures leave the loaded context intact. */
-    public CatalogDirectories requestedDirectories() {
-        return new CatalogDirectories(
-                Path.of(catalog.getZonesDirectory()).toAbsolutePath().normalize(),
-                Path.of(catalog.getKeysDirectory()).toAbsolutePath().normalize());
+    /** Capture pending configuration before loading. */
+    public Path requestedDirectory() {
+        return Path.of(catalog.getDirectory()).toAbsolutePath().normalize();
     }
 
-    /** Applies the directory pair only after its catalog has been read successfully. */
-    public void catalogLoaded(CatalogDirectories directories) {
-        loadedDirectories = directories;
+    /** Apply only after a successful load. */
+    public void catalogLoaded(Path directory) {
+        loadedDirectory = directory;
     }
 
-    /** Prevents a displayed entry or editor from being used against unapplied directory fields. */
-    public CatalogDirectories requireLoadedDirectories() {
-        if (loadedDirectories == null || !loadedDirectories.equals(requestedDirectories())) {
-            throw new IllegalStateException("Reload the catalog before using changed directories.");
+    public Path requireLoadedDirectory() {
+        if (loadedDirectory == null || !loadedDirectory.equals(requestedDirectory())) {
+            throw new IllegalStateException("Reload the catalog before using the changed directory.");
         }
-        return loadedDirectories;
+        return loadedDirectory;
     }
 
     /**

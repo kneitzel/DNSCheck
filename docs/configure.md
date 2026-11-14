@@ -1,5 +1,9 @@
 # Configure
 
+This guide configures the service and its scoped storage. CLI and FX use the
+[local directory format](cli.md) with `DNSCHECK_DIRECTORY` instead.
+
+
 DNSCheck configuration uses Quarkus `application.properties`, environment variables, and an optional env file for systemd.
 
 ## Paths

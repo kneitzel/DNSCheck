@@ -8,7 +8,7 @@ consumer of the core:
 - **`dnscheck-service`** (`de.neitzel.dnscheck.service`) — Quarkus application: scheduled reconciliation, REST API, operator authentication and rights (JPA), embedded React UI (`src/main/frontend`, MUI). Depends on `dnscheck-core`.
 - **`dnscheck-cli`** (`de.neitzel.dnscheck.cli`) — standalone command-line tool for administrators to trigger reconciliation directly (e.g. after hand-editing a zone definition JSON). Uses `dnscheck-core` directly, not the service API.
 
-- **`dnscheck-fx`** (`de.neitzel.dnscheck.fx`) — JavaFX desktop application using NeitzelLib Views and ViewModels over ordinary Java models. Reads and writes the same scoped JSON catalog and invokes the core directly, without HTTP or the operator database.
+- **`dnscheck-fx`** (`de.neitzel.dnscheck.fx`) — JavaFX desktop application using NeitzelLib Views and ViewModels over ordinary Java models. Reads and writes the same local `.domain` directory as the CLI and invokes the core directly, without HTTP or the operator database.
 
 This keeps DNS logic framework-agnostic and testable, allows the CLI to work without the service running, and lets the UI ship as part of the deployable service.
 
@@ -18,14 +18,25 @@ The desktop, like the CLI, runs with the local operator’s filesystem and TSIG 
 access. Service login, MFA, and per-operator/group rights are enforced by the
 service API only; the desktop does not provide that authorization boundary.
 
-The directory fields are pending configuration until Reload successfully reads
-the catalog. The applied zones/keys directory pair identifies the displayed
-entries and open editor. Open and reconciliation require that the fields still
-match this pair. Save and reconciliation validates the pair before writing, so a
-changed field cannot save a file in one catalog and update DNS from another.
-A failed reload leaves the old context intact; a successful reload replaces it
-and clears the selection/editor. Save alone writes the editor’s original file.
-Reconciliation captures the applied paths before starting its background worker.
+File → Open selects and loads a directory in one operation; File → Reload
+rescans the applied directory. A directory and its catalog are committed together
+only after loading and unsaved-edit confirmation succeed. Failed or cancelled
+operations preserve the old directory, navigation and editor.
+
+The split view uses a Domains root and bare zone names as navigation. Selecting
+the root displays the catalog table; selecting a zone displays its details.
+Unsaved edits require Save, Discard, or Cancel before replacing the editor.
+Cancelled navigation restores the prior tree selection. Save alone writes the
+editor's original file. Reconciliation validates and captures the applied
+directory before starting its background worker.
+
+Opening zone details loads live DNS asynchronously. Results are tied to the open
+editor and request generation so a late AXFR cannot replace a newer zone's view.
+The desktop retains the file definition separately from the merged display: live
+rows are never serialized by a zone-settings save. Popup operations carry explicit
+file-storage and immediate-online flags; a failed online step reports saved file
+intent separately. The service's existing zone-view and reconciliation contracts
+remain unchanged; desktop inspection includes SOA and signature records.
 
 ## Build boundaries
 
