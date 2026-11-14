@@ -28,7 +28,7 @@ See [CONTEXT.md](CONTEXT.md) for domain terminology.
 
 ## Prerequisites
 
-- **Java 21** runtime (for pre-built releases) or Docker
+- **Java 25** runtime (for pre-built releases) or Docker
 - **BIND** authoritative nameserver with TSIG configured for AXFR and dynamic updates
 - Network access from DNSCheck to each zone's nameserver (TCP/UDP port 53)
 - Zone definition JSON files and TSIG key files on disk

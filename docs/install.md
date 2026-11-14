@@ -11,7 +11,7 @@ A release contains:
 | Service | `service/quarkus-run.jar` + `service/lib/` | Quarkus application |
 | CLI | `cli/dnscheck-cli.jar` | Shaded CLI jar |
 
-Requirements: **Java 21** (JRE or JDK).
+Requirements: **Java 25** (JRE or JDK).
 
 ## Zone catalog and keys
 

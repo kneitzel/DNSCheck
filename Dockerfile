@@ -1,4 +1,7 @@
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-25 AS build
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libatomic1 \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /build
 
 COPY pom.xml .
@@ -13,9 +16,10 @@ COPY dnscheck-core dnscheck-core
 COPY dnscheck-service dnscheck-service
 COPY dnscheck-cli dnscheck-cli
 
-RUN mvn -B -pl dnscheck-service,dnscheck-cli -am package -DskipTests -Dquarkus.package.jar.enabled=true
+RUN mvn -B -pl dnscheck-service,dnscheck-cli -am package -DskipTests -Dquarkus.package.jar.enabled=true \
+    -Dquarkus.quinoa.package-manager-install=true -Dquarkus.quinoa.package-manager-install.node-version=26.13.0
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 
 COPY --from=build /build/dnscheck-service/target/quarkus-app/ /app/service/

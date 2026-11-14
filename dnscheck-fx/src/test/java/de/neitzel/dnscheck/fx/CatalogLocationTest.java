@@ -157,9 +157,16 @@ class CatalogLocationTest {
         Path fileA = zoneFile(zonesA, "ns-a.example.com");
         Path fileB = zoneFile(zonesB, "ns-b.example.com");
         return onFx(() -> {
-            ApplicationContext context = new ApplicationContext(DnsCheckFxApp.class);
             RecordingFiles files = new RecordingFiles();
-            context.addSingleton(ZoneFiles.class, files);
+            ApplicationContext context = new ApplicationContext(DnsCheckFxApp.class) {
+                @Override
+                public <T> T getComponent(Class<? extends T> type) {
+                    if (type == ZoneFiles.class) {
+                        return type.cast(files);
+                    }
+                    return super.getComponent(type);
+                }
+            };
             Desk desk = context.getComponent(Desk.class);
             CatalogSession session = new CatalogSession();
             session.setZonesDirectory(zonesA.toString());

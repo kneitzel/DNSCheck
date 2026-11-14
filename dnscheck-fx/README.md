@@ -14,7 +14,7 @@ mvn -pl fx -am install -DskipTests
 
 ## Run
 
-From the DNSCheck root, with Java 21 and the zone catalog and keys directories you want to edit:
+From the DNSCheck root, with Java 25 and the zone catalog and keys directories you want to edit:
 
 ```bash
 mvn -pl dnscheck-fx javafx:run

@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Validates Maven against the files actually copied before Docker's first RUN. */
+/** Validates Maven against the files actually copied before Docker's dependency prefetch. */
 class DockerReactorTest {
     @TempDir Path build;
 
@@ -22,7 +22,7 @@ class DockerReactorTest {
         }
         boolean copied = false;
         for (String line : Files.readAllLines(root.resolve("Dockerfile"))) {
-            if (line.startsWith("RUN ")) break;
+            if (line.startsWith("RUN mvn ")) break;
             if (!line.startsWith("COPY ")) continue;
             String[] copy = line.trim().split("\\s+");
             assertEquals(3, copy.length, "Extend this build-input harness for new COPY syntax");
