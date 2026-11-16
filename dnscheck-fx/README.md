@@ -4,26 +4,17 @@ A JavaFX desktop application for the zone catalog. It reads and writes the same 
 
 Views bind to ordinary Java models through the NeitzelLib `fx` module. That module's `fx/README.md` is the usage guide. This module is the DNSCheck call site.
 
-## Install the fx library
-
-Install `de.neitzel.lib:fx:1.0-SNAPSHOT` from the
-[NeitzelLib `main` branch](https://github.com/kneitzel/NeitzelLib/tree/main).
-Use merge commit `7895900` or a newer revision on `main` to get both docking
-and the shared `ThemeManager` with its bundled themes. With JDK 25 selected,
-run this command from the NeitzelLib repository root:
-
-```bash
-./mvnw -Dmaven.repo.local="$HOME/.m2/dnscheck-docking" -pl fx -am install -DskipTests
-```
-
-Use the same local Maven repository when building and running DNSCheck below.
-
 ## Build the desktop app
 
-With JDK 25 and NeitzelLib installed, run from the DNSCheck root:
+Use a full JDK 25 and Maven. The desktop module declares the public Gitea
+Maven registry and Maven downloads
+[NeitzelLib FX 1.0](https://gitea.neitzel.de/konrad/NeitzelLib/releases/tag/v1.0)
+and its dependencies automatically.
+
+From the DNSCheck repository root:
 
 ```bash
-mvn -Dmaven.repo.local="$HOME/.m2/dnscheck-docking" -pl dnscheck-fx -am package
+mvn -pl dnscheck-fx -am package
 ```
 
 The default `package` phase uses the build JDK's `jpackage` to create an app image
@@ -41,8 +32,8 @@ Use `-Djpackage.skip=true` for a JAR-only build. The bundle version defaults to
 From the DNSCheck root, with Java 25:
 
 ```bash
-mvn -Dmaven.repo.local="$HOME/.m2/dnscheck-docking" -pl dnscheck-fx -am -Djpackage.skip=true -DskipTests install
-mvn -Dmaven.repo.local="$HOME/.m2/dnscheck-docking" -pl dnscheck-fx javafx:run
+mvn -pl dnscheck-fx -am -Djpackage.skip=true -DskipTests install
+mvn -pl dnscheck-fx javafx:run
 ```
 
 On startup, FX opens the last-used folder. If that folder is unavailable or

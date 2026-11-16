@@ -17,13 +17,23 @@
     <properties>
         <javafx.version>27.0.1</javafx.version>
         <javafx.maven.plugin>0.0.8</javafx.maven.plugin>
-        <neitzellib.version>1.0-SNAPSHOT</neitzellib.version>
+        <neitzellib.version>1.0</neitzellib.version>
         <lombok.version>1.18.48</lombok.version>
         <main.class>de.neitzel.dnscheck.fx.Main</main.class>
         <jpackage.skip>false</jpackage.skip>
         <!-- macOS jpackage requires a positive first version component. -->
         <jpackage.app.version>1.0</jpackage.app.version>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>gitea-neitzellib</id>
+            <url>https://gitea.neitzel.de/api/packages/konrad/maven</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 
     <dependencies>
         <dependency>
