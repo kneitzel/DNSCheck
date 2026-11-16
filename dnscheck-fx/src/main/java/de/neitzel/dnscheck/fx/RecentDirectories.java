@@ -80,6 +80,22 @@ public class RecentDirectories {
         write(settings);
     }
 
+    /** Application appearance preference, independent of directory and docking layouts. */
+    public synchronized String theme() throws IOException {
+        JsonNode value = read().get("theme");
+        if (value == null) return "light";
+        if (!value.isTextual()) throw new IOException("Expected theme to be a string in " + configuration);
+        return value.textValue();
+    }
+
+    public synchronized void rememberTheme(String id) throws IOException {
+        if (!java.util.Set.of("light", "dark", "high-contrast").contains(id))
+            throw new IllegalArgumentException("Unknown DNSCheck theme: " + id);
+        ObjectNode settings = read();
+        settings.put("theme", id);
+        write(settings);
+    }
+
     private ObjectNode read() throws IOException {
         if (!Files.exists(configuration)) return mapper.createObjectNode();
         JsonNode settings = mapper.readTree(configuration.toFile());

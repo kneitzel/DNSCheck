@@ -23,7 +23,9 @@
                     <MenuItem fx:id="reloadMenu" text="_Reload" onAction="#reload" accelerator="Shortcut+R"/>
                     <Menu fx:id="recentMenu" text="_Recent" onShowing="#refreshRecent"/>
                 </Menu>
+                <Menu text="_View"><Menu fx:id="themeMenu" text="_Theme"/></Menu>
             </MenuBar>
+            <Label fx:id="themeMessage" wrapText="true" styleClass="dns-error" style="-fx-padding: 0 12;"/>
             <Label fx:id="directoryLabel" style="-fx-padding: 0 12 6 12;"/>
         </VBox>
     </top>

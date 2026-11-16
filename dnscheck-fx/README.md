@@ -7,9 +7,7 @@ Views bind to ordinary Java models through the NeitzelLib `fx` module. That modu
 ## Install the fx library
 
 `dnscheck-fx` depends on a docking-enabled build of
-`de.neitzel.lib:fx:1.0-SNAPSHOT`. From the NeitzelLib checkout at docking commit
-`a35664dabe7930f0e5f33a2ef35acfce642de320` or a later compatible revision, install
-it into a dedicated Maven repository:
+`de.neitzel.lib:fx:1.0-SNAPSHOT`, now including `de.neitzel.fx.theme.ThemeManager` and the bundled themes. The original docking-only commit `a35664dabe7930f0e5f33a2ef35acfce642de320` is insufficient for this theme integration. Use the qualified shared-theme implementation (currently `feature/data-grid-foundations`) or its eventual merged revision, and install it into a dedicated Maven repository:
 
 ```bash
 ./mvnw -Dmaven.repo.local="$HOME/.m2/dnscheck-docking" -pl fx -am install -DskipTests
@@ -98,6 +96,45 @@ Closing an edited tab, switching folders, and quitting offer **Save**,
 **Discard**, and **Cancel**. **File → Reload** refreshes clean tabs and preserves
 pending edits. If a definition changed on disk, use **Reload from disk** in its
 editor to confirm discarding the pending edits and load the current file.
+
+## Shared themes
+
+Choose **View → Theme → Light / Dark / High contrast**. DNSCheck uses the shared
+NeitzelLib themes and its own semantic palette for enforced entries, removal
+entries and live-only records. Their ✓ / − / ● indicators and text legend retain
+their meaning under selection. Disabled retained rows stay readable and use a
+dashed table boundary. The application still uses its existing `TableView` and
+record dialogs; changing themes does not reload records, issue AXFR, save a zone,
+or reconcile DNS.
+
+Theme selection is explicit, independent of OS appearance. It is stored as `theme`
+in the same native `config.json` as recent directories, preserving history and
+other fields. It is not part of a per-folder docking layout. An unavailable saved
+theme falls back to Light with an explanation. A detectable installation failure
+retains the previous theme. A preference-write failure leaves the successfully
+applied theme active and reports that it was not saved; malformed configuration
+files are not overwritten.
+
+Dialogs and docking floating windows inherit the selected bundle, including
+windows opened afterward. Switching preserves selection, column widths/sorting,
+dirty zone settings and record-dialog drafts. Non-color error text and independent
+file-storage/online-action choices remain unchanged.
+
+Application tokens in `de/neitzel/dnscheck/fx/theme/*.css` are
+`-dns-file-surface`, `-dns-live-surface`, `-dns-removal-surface`,
+`-dns-record-text`, `-dns-file-indicator`, `-dns-live-indicator`, and
+`-dns-removal-indicator`. Existing `file-entry`, `live-entry`, `removal-entry`
+row pseudo-classes and `file-legend`, `live-legend`, `removal-legend` classes remain.
+`dns-error` is the application error-text hook. Domain tokens remain outside the
+generic library. Custom overrides require their own contrast/layout qualification.
+
+The desktop tests measure resolved row, selected/focused/disabled, legend,
+record-dialog error and action/catalog icon colors for all three themes, and save
+captures to `target/theme-evidence/`. Targets are 4.5:1 normal text, 7:1 high-contrast
+text and 3:1 meaningful icons. This is bounded desktop rendering evidence, not a
+full accessibility certification or a native-input/OS matrix. Existing JavaFX CSS
+lookup warnings also occur in the pre-theme baseline; rendered specimens are
+checked independently. The Service UI is unaffected by this desktop integration.
 
 ## Inspect and edit records
 

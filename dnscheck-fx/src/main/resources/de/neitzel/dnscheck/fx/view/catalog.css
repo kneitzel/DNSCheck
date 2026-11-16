@@ -30,3 +30,8 @@
     -fx-alignment: center;
     -fx-background-radius: 3;
 }
+
+/* Match the existing component selector so scene-theme precedence cannot hide selection. */
+.neitzel-theme .catalog-tabs > .tab-header-area > .headers-region > .tab:selected .catalog-icon {
+    -fx-stroke: -nl-focus;
+}

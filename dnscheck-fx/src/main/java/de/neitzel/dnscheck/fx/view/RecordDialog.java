@@ -79,7 +79,7 @@ public class RecordDialog extends Dialog<RecordChange> {
         description.setWrapText(true); description.setId("recordDetails");
         Label behavior = new Label("File storage and immediate DNS changes are independent. Unchecking file storage removes an existing file entry; it does not delete live DNS. A removal entry applies its pattern when online changes are selected.");
         behavior.setWrapText(true);
-        error.setWrapText(true); error.setStyle("-fx-text-fill: #a12622;"); error.setId("recordError");
+        error.setWrapText(true); error.getStyleClass().add("dns-error"); error.setId("recordError");
         VBox content = new VBox(12, description, fields, removal, store, online, behavior, error);
         content.setPadding(new Insets(12)); content.setPrefWidth(610);
         getDialogPane().setContent(content);

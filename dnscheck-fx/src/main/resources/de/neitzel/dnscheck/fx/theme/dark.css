@@ -1,0 +1,14 @@
+.neitzel-theme, .neitzel-theme .root {
+    -dns-file-surface: #182e48;
+    -dns-live-surface: #18362b;
+    -dns-removal-surface: #402329;
+    -dns-record-text: #f2f5fa;
+    -dns-file-indicator: #a7d3ff;
+    -dns-live-indicator: #a8e6c0;
+    -dns-removal-indicator: #ffc0b8;
+}
+
+/* Application-wide semantic error hook, including owned record dialogs. */
+.neitzel-theme .dns-error { -fx-text-fill: -nl-error; -fx-font-weight: bold; }
+/* Keep catalog selection icons distinguishable on the shared raised tab surface. */
+.neitzel-theme .catalog-tabs .tab:selected .catalog-icon { -fx-stroke: -nl-focus; }

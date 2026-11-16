@@ -58,6 +58,7 @@ public class CatalogController implements HasViewModel {
     private String layoutFailure = "";
     private DockingManager docking;
     private Stage stage;
+    private de.neitzel.dnscheck.fx.DnsThemes themes;
 
     @FXML private SplitPane catalogSplit;
     @FXML private ListView<CatalogEntryModel> zonesList;
@@ -66,6 +67,8 @@ public class CatalogController implements HasViewModel {
     @FXML private Label keysHeading;
     @FXML private DockPane editorHost;
     @FXML private Menu recentMenu;
+    @FXML private Menu themeMenu;
+    @FXML private Label themeMessage;
     @FXML private Button newZoneButton;
     @FXML private Button addKeyButton;
     @FXML private Label statusLabel;
@@ -115,6 +118,12 @@ public class CatalogController implements HasViewModel {
 
     public void start(Stage stage) {
         this.stage = stage;
+        themes = new de.neitzel.dnscheck.fx.DnsThemes(recentDirectories);
+        themes.install(stage.getScene(), themeMenu);
+        themeMessage.textProperty().bind(themes.messageProperty());
+        themeMessage.managedProperty().bind(themeMessage.textProperty().isNotEmpty());
+        themeMessage.visibleProperty().bind(themeMessage.managedProperty());
+        stage.addEventHandler(WindowEvent.WINDOW_HIDDEN, event -> themes.close());
         tabContext = new ApplicationContext(DnsCheckFxApp.class) {
             @Override public <T> T getComponent(Class<? extends T> type) {
                 if (type == ZoneController.class) return type.cast(new ZoneController(desk, zoneFiles));
