@@ -72,7 +72,11 @@ folder with no definitions opens as an empty catalog.
 
 ## Work with zones and keys
 
-The left sidebar lists zones and shows any validation errors. Click a valid zone
+The left sidebar has vertical **Zones** (globe icon) and **Keys** (key icon) tabs.
+Zones lists zone definitions and any validation errors; Keys lists valid key
+filenames in the working folder. Each tab has a compact **+** button at the upper
+right of its heading to create a zone or add a key.
+Click a valid zone
 to open it in a tab or return to its existing tab. Drag tabs to rearrange them,
 split the editor area, or move them to floating windows. DNSCheck stores tab
 arrangement, window positions, and sidebar width in `.dnscheck-layout.json` in

@@ -61,7 +61,7 @@ class CatalogLocationTest {
             f.open(0);
             assertSame(first, f.desk().zone());
             assertEquals("edited.example.com", first.getNameserver());
-            assertEquals(2, f.view().getRoot().lookupAll(".tab").size());
+            assertEquals(2, f.view().getRoot().lookup("#editorHost").lookupAll(".tab").size());
             return null;
         });
     }
@@ -165,7 +165,7 @@ class CatalogLocationTest {
             f.view().getRoot().applyCss();
             f.view().getRoot().layout();
             assertEquals("example.net", f.desk().zone().getZone());
-            assertEquals(2, f.view().getRoot().lookupAll(".tab").size());
+            assertEquals(2, f.view().getRoot().lookup("#editorHost").lookupAll(".tab").size());
             return null;
         });
     }

@@ -5,10 +5,11 @@
 <?import de.neitzel.fx.view.DirectBinding?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.SVGPath?>
 
 <BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
             fx:controller="de.neitzel.dnscheck.fx.view.CatalogController"
-            prefWidth="1200" prefHeight="800">
+            prefWidth="1200" prefHeight="800" stylesheets="@catalog.css">
     <fx:define>
         <BindingList>
             <DirectBinding control="directoryLabel" property="text" path="directory" direction="view"/>
@@ -28,14 +29,47 @@
     </top>
     <center>
         <SplitPane fx:id="catalogSplit" dividerPositions="0.22">
-            <VBox minWidth="160" prefWidth="240" spacing="8" style="-fx-padding: 8;">
-                <Label text="Zones"/>
-                <ListView fx:id="zonesList" VBox.vgrow="ALWAYS"/>
-                <HBox spacing="8">
-                    <Button fx:id="newZoneButton" text="New zone" onAction="#newZone" disable="true"/>
-                    <Button fx:id="addKeyButton" text="Add key" onAction="#addKey" disable="true"/>
-                </HBox>
-            </VBox>
+            <TabPane fx:id="catalogTabs" side="LEFT" rotateGraphic="false" tabClosingPolicy="UNAVAILABLE"
+                     minWidth="160" prefWidth="240" styleClass="catalog-tabs">
+                <Tab id="zonesTab">
+                    <tooltip><Tooltip text="Zones"/></tooltip>
+                    <graphic>
+                        <SVGPath styleClass="catalog-icon" accessibleText="Zones"
+                                 content="M 10 1 A 9 9 0 1 0 10 19 A 9 9 0 1 0 10 1 M 1 10 H 19 M 10 1 C 4 6 4 14 10 19 M 10 1 C 16 6 16 14 10 19"/>
+                    </graphic>
+                    <VBox spacing="8" styleClass="catalog-content">
+                        <HBox alignment="CENTER_LEFT">
+                            <Label fx:id="zonesHeading" text="Zones"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="newZoneButton" text="+" onAction="#newZone" disable="true"
+                                    accessibleText="New zone" styleClass="catalog-add">
+                                <tooltip><Tooltip text="New zone"/></tooltip>
+                            </Button>
+                        </HBox>
+                        <ListView fx:id="zonesList" VBox.vgrow="ALWAYS"/>
+                    </VBox>
+                </Tab>
+                <Tab id="keysTab">
+                    <tooltip><Tooltip text="Keys"/></tooltip>
+                    <graphic>
+                        <SVGPath styleClass="catalog-icon" accessibleText="Keys"
+                                 content="M 12 1 A 6 6 0 1 0 12 13 A 6 6 0 1 0 12 1 M 8 11 L 1 18 V 21 H 4 V 18 H 7 V 15 L 9 13 M 14 5 A 1 1 0 1 0 14 7 A 1 1 0 1 0 14 5"/>
+                    </graphic>
+                    <VBox spacing="8" styleClass="catalog-content">
+                        <HBox alignment="CENTER_LEFT">
+                            <Label fx:id="keysHeading" text="Keys"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="addKeyButton" text="+" onAction="#addKey" disable="true"
+                                    accessibleText="Add key" styleClass="catalog-add">
+                                <tooltip><Tooltip text="Add key"/></tooltip>
+                            </Button>
+                        </HBox>
+                        <ListView fx:id="keysList" VBox.vgrow="ALWAYS">
+                            <placeholder><Label text="No keys in this folder" wrapText="true"/></placeholder>
+                        </ListView>
+                    </VBox>
+                </Tab>
+            </TabPane>
             <DockPane fx:id="editorHost"/>
         </SplitPane>
     </center>

@@ -61,6 +61,9 @@ public class CatalogController implements HasViewModel {
 
     @FXML private SplitPane catalogSplit;
     @FXML private ListView<CatalogEntryModel> zonesList;
+    @FXML private ListView<String> keysList;
+    @FXML private Label zonesHeading;
+    @FXML private Label keysHeading;
     @FXML private DockPane editorHost;
     @FXML private Menu recentMenu;
     @FXML private Button newZoneButton;
@@ -77,6 +80,8 @@ public class CatalogController implements HasViewModel {
     @Override
     public void setViewModel(ViewModel viewModel) {
         this.viewModel = viewModel;
+        sizeAddButton(newZoneButton, zonesHeading);
+        sizeAddButton(addKeyButton, keysHeading);
         zonesList.setCellFactory(list -> new ListCell<>() {
             @Override protected void updateItem(CatalogEntryModel entry, boolean empty) {
                 super.updateItem(entry, empty);
@@ -97,6 +102,15 @@ public class CatalogController implements HasViewModel {
         saveDelay.setOnFinished(event -> {
             if (stage.isShowing()) saveLayout(docking.snapshot());
         });
+    }
+
+    private static void sizeAddButton(Button button, Label heading) {
+        button.minHeightProperty().bind(heading.heightProperty());
+        button.prefHeightProperty().bind(heading.heightProperty());
+        button.maxHeightProperty().bind(heading.heightProperty());
+        button.minWidthProperty().bind(heading.heightProperty());
+        button.prefWidthProperty().bind(heading.heightProperty());
+        button.maxWidthProperty().bind(heading.heightProperty());
     }
 
     public void start(Stage stage) {
@@ -323,6 +337,12 @@ public class CatalogController implements HasViewModel {
     private void refreshCatalog(List<CatalogEntryModel> entries) {
         desk.catalog().setEntries(entries);
         zonesList.getItems().setAll(entries);
+        try {
+            keysList.getItems().setAll(imports.keyFiles(workingFolder));
+        } catch (IOException | RuntimeException failure) {
+            keysList.getItems().clear();
+            note("Could not list keys: " + text(failure));
+        }
     }
 
     @FXML public void refreshRecent() {
