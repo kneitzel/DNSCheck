@@ -6,14 +6,17 @@ Views bind to ordinary Java models through the NeitzelLib `fx` module. That modu
 
 ## Install the fx library
 
-`dnscheck-fx` depends on a docking-enabled build of
-`de.neitzel.lib:fx:1.0-SNAPSHOT`, now including `de.neitzel.fx.theme.ThemeManager` and the bundled themes. The original docking-only commit `a35664dabe7930f0e5f33a2ef35acfce642de320` is insufficient for this theme integration. Use the qualified shared-theme implementation (currently `feature/data-grid-foundations`) or its eventual merged revision, and install it into a dedicated Maven repository:
+Install `de.neitzel.lib:fx:1.0-SNAPSHOT` from the
+[NeitzelLib `main` branch](https://github.com/kneitzel/NeitzelLib/tree/main).
+Use merge commit `7895900` or a newer revision on `main` to get both docking
+and the shared `ThemeManager` with its bundled themes. With JDK 25 selected,
+run this command from the NeitzelLib repository root:
 
 ```bash
 ./mvnw -Dmaven.repo.local="$HOME/.m2/dnscheck-docking" -pl fx -am install -DskipTests
 ```
 
-Use the same Maven repository for the DNSCheck commands below.
+Use the same local Maven repository when building and running DNSCheck below.
 
 ## Build the desktop app
 
