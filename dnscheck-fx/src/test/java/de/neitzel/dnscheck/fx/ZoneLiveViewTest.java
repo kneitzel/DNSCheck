@@ -12,6 +12,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.Window;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
@@ -28,6 +29,12 @@ class ZoneLiveViewTest {
         CountDownLatch started = new CountDownLatch(1);
         try { Platform.startup(started::countDown); } catch (IllegalStateException running) { started.countDown(); }
         assertTrue(started.await(10, TimeUnit.SECONDS));
+    }
+    @AfterEach void closeWindows() throws Exception {
+        onFx(() -> {
+            for (Window window : List.copyOf(Window.getWindows())) window.hide();
+            return null;
+        });
     }
     @Test void opensImmediatelyAndLoadsMergedColoredRowsInTheBackground() throws Exception {
         Fixture f = fixture();
@@ -81,7 +88,8 @@ class ZoneLiveViewTest {
                 ((TextArea) pane.lookup("#recordRdata")).setText("192.0.2.7");
                 ((Button) pane.lookup("#applyRecordButton")).fire();
             });
-            f.context().getComponent(ZoneController.class).addRecord();
+            var zone = (ZoneController) f.view().getRoot().lookup("#zoneRoot").getUserData();
+            zone.addRecord();
             return null;
         });
         assertTrue(saved.await(5, TimeUnit.SECONDS));
@@ -112,9 +120,16 @@ class ZoneLiveViewTest {
             Desk desk = context.getComponent(Desk.class);
             CatalogSession session = new CatalogSession(); session.setDirectory(temp.toString()); desk.prepare(session, context);
             LoadedView view = ViewLoader.load(CatalogController.class.getResource("Catalog.fxml"), session, context);
-            new Scene(view.getRoot(), 1200, 800); view.getRoot().applyCss(); view.getRoot().layout();
-            Attributes.set(view.getViewModel(), "selected", session.getEntries().getFirst());
-            context.getComponent(CatalogController.class).open();
+            var stage = new javafx.stage.Stage();
+            stage.setScene(new Scene(view.getRoot(), 1200, 800));
+            stage.show();
+            var controller = context.getComponent(CatalogController.class);
+            controller.start(stage);
+            var list = (ListView<?>) view.getRoot().lookup("#zonesList");
+            list.getSelectionModel().select(0);
+            controller.open();
+            view.getRoot().applyCss();
+            view.getRoot().layout();
             @SuppressWarnings("unchecked") TableView<RecordRow> table = (TableView<RecordRow>) view.getRoot().lookup("#recordTable");
             Label status = (Label) view.getRoot().lookup("#liveStatus");
             CountDownLatch loaded = new CountDownLatch(1);

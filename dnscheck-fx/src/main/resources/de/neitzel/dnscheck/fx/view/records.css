@@ -7,3 +7,11 @@
 .file-legend { -fx-text-fill: #225482; }
 .removal-legend { -fx-text-fill: #9c342b; }
 .live-legend { -fx-text-fill: #226540; }
+
+.zone-action-icon {
+    -fx-fill: transparent;
+    -fx-stroke: -fx-text-base-color;
+    -fx-stroke-width: 1.4;
+    -fx-stroke-line-cap: round;
+    -fx-stroke-line-join: round;
+}

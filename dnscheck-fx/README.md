@@ -6,18 +6,23 @@ Views bind to ordinary Java models through the NeitzelLib `fx` module. That modu
 
 ## Install the fx library
 
-`dnscheck-fx` depends on `de.neitzel.lib:fx:1.0-SNAPSHOT` from the local Maven repository. From the NeitzelLib checkout:
+`dnscheck-fx` depends on a docking-enabled build of
+`de.neitzel.lib:fx:1.0-SNAPSHOT`. From the NeitzelLib checkout at docking commit
+`a35664dabe7930f0e5f33a2ef35acfce642de320` or a later compatible revision, install
+it into a dedicated Maven repository:
 
 ```bash
-mvn -pl fx -am install -DskipTests
+./mvnw -Dmaven.repo.local="$HOME/.m2/dnscheck-docking" -pl fx -am install -DskipTests
 ```
+
+Use the same Maven repository for the DNSCheck commands below.
 
 ## Build the desktop app
 
 With JDK 25 and NeitzelLib installed, run from the DNSCheck root:
 
 ```bash
-mvn -pl dnscheck-fx -am package
+mvn -Dmaven.repo.local="$HOME/.m2/dnscheck-docking" -pl dnscheck-fx -am package
 ```
 
 The default `package` phase uses the build JDK's `jpackage` to create an app image
@@ -35,14 +40,14 @@ Use `-Djpackage.skip=true` for a JAR-only build. The bundle version defaults to
 From the DNSCheck root, with Java 25:
 
 ```bash
-mvn -pl dnscheck-fx javafx:run
+mvn -Dmaven.repo.local="$HOME/.m2/dnscheck-docking" -pl dnscheck-fx -am -Djpackage.skip=true -DskipTests install
+mvn -Dmaven.repo.local="$HOME/.m2/dnscheck-docking" -pl dnscheck-fx javafx:run
 ```
 
-On startup, FX automatically loads the most recently opened folder that still
-exists. If none remain, it uses the current working directory. An explicit
-`DNSCHECK_DIRECTORY` overrides the remembered folder. CLI and FX share the [local directory format](../docs/cli.md):
-flat `<zone>.domain` JSON files and BIND keys beside them, including shared keys.
-The old separate directories and owner folders are no longer supported by FX.
+On startup, FX opens the last-used folder. If that folder is unavailable or
+there is no history, FX opens a folder chooser. CLI and FX share the
+[local directory format](../docs/cli.md). Keep flat `<zone>.domain` JSON files
+and BIND keys together in the working folder. Several zones can use the same key.
 
 Use **File → Open…** (Cmd/Ctrl+O) to choose a directory and load it immediately.
 **File → Reload** (Cmd/Ctrl+R) rescans the currently loaded directory. The path
@@ -62,26 +67,37 @@ key contents. Configuration writes replace the file atomically when supported;
 other settings in that JSON object are preserved. Configuration errors are
 reported without preventing directory loading or overwriting a malformed file.
 
-A failed open or reload preserves the previous catalog
-and editor. An empty directory produces an explicit error.
+A failed open or reload preserves the current catalog and editors. A readable
+folder with no definitions opens as an empty catalog.
 
-The resizable split view has a navigation tree on the left:
+## Work with zones and keys
 
-- Select **Domains** to show only the catalog table on the right. It lists zone
-  names, nameservers, key filenames, validity, and validation errors.
-- Select a zone name beneath **Domains** to open its details on the right.
-  Double-clicking a catalog table row also opens that zone.
-- Invalid definitions stay in the tree and table; selecting one shows its error.
+The left sidebar lists zones and shows any validation errors. Click a valid zone
+to open it in a tab or return to its existing tab. Drag tabs to rearrange them,
+split the editor area, or move them to floating windows. DNSCheck stores tab
+arrangement, window positions, and sidebar width in `.dnscheck-layout.json` in
+the working folder. The next time you open that folder, DNSCheck restores the
+available tabs and loads live records as tabs become visible.
 
-Before changing the selected zone, returning to **Domains**, opening/reloading a
-directory, or closing the window would discard unsaved edits, FX offers **Save**,
-**Discard**, and **Cancel**. Cancelling restores the previous tree selection and
-keeps the current directory and editor. Save always writes the editor's original
-file. A failed save keeps the editor open.
+- **New zone** creates a definition in the working folder from a zone name,
+  nameserver, and a key selected from the dropdown. It opens the new editor.
+- **Add key** accepts pasted BIND key text and suggests a filename. You can also
+  drop `.key` and `.domain` files onto DNSCheck. A zone imported before its key
+  appears with a missing-key error until the key is available.
+- DNSCheck asks before replacing a file and lists the tabs affected. Replacing a
+  zone definition reloads its tab. Replacing a shared key refreshes live DNS for
+  open zones using it.
+- Change a zone’s key in the editor using the **Key file** dropdown, then save
+  its settings.
+
+Closing an edited tab, switching folders, and quitting offer **Save**,
+**Discard**, and **Cancel**. **File → Reload** refreshes clean tabs and preserves
+pending edits. If a definition changed on disk, use **Reload from disk** in its
+editor to confirm discarding the pending edits and load the current file.
 
 ## Inspect and edit records
 
-Opening a zone immediately shows its file entries and starts a background,
+Showing a zone editor immediately displays its file entries and starts a background,
 TSIG-authenticated AXFR from its configured nameserver. The transfer includes all
 records, including SOA and DNSSEC records. A failed transfer leaves the file
 entries visible and labels live state as unavailable. **Refresh live DNS** retries
@@ -129,8 +145,10 @@ until a successful refresh.
 Save any edited zone settings before editing records. **Save zone settings**
 writes the original `.domain` file and refreshes its live view. **Save and dry-run**
 reports drift without applying it; **Save and reconcile** applies the full zone's
-enforcement. Record dialogs operate on just their selected entry. Navigation and
-closing wait while a record operation is being applied.
+enforcement. **Dry-run file** and **Reconcile file** use the saved definition.
+Hover over an action icon to see its name at the bottom of the main window.
+Record dialogs operate on their selected entry. You can switch tabs while a record
+operation runs. Closing the affected tab or switching folders waits for the result.
 
 ## Access and architecture
 

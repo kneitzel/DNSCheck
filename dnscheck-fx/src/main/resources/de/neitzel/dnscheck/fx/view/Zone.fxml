@@ -11,18 +11,18 @@
         <BindingList>
             <DirectBinding control="zoneLabel" property="text" path="zone" direction="view"/>
             <DirectBinding control="nameserverField" property="text" path="nameserver" direction="both"/>
-            <DirectBinding control="keyFileField" property="text" path="keyFile" direction="both"/>
+            <DirectBinding control="keyFileField" property="value" path="keyFile" direction="both"/>
             <DirectBinding control="outcomeArea" property="text" path="outcome" direction="view"/>
         </BindingList>
     </fx:define>
     <GridPane hgap="8" vgap="6">
-        <columnConstraints><ColumnConstraints minWidth="110"/><ColumnConstraints hgrow="ALWAYS" minWidth="420"/></columnConstraints>
+        <columnConstraints><ColumnConstraints minWidth="110"/><ColumnConstraints hgrow="ALWAYS" minWidth="120"/></columnConstraints>
         <Label text="Zone" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
         <Label fx:id="zoneLabel" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
         <Label text="Nameserver" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
         <TextField fx:id="nameserverField" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
         <Label text="Key file" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-        <TextField fx:id="keyFileField" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+        <ComboBox fx:id="keyFileField" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
     </GridPane>
     <HBox spacing="12">
         <Label text="✓ Enforced entry" styleClass="file-legend"/>
@@ -40,15 +40,18 @@
             <TableColumn fx:id="statusColumn" text="Status" prefWidth="190"/>
         </columns>
     </TableView>
-    <HBox spacing="8">
+    <FlowPane hgap="8" vgap="6">
         <Button text="New record…" onAction="#addRecord"/>
         <Button text="Record details…" onAction="#editRecord"/>
         <Button text="Refresh live DNS" onAction="#refreshLive"/>
         <Button text="Save zone settings" onAction="#save"/>
-    </HBox>
-    <HBox spacing="8">
-        <Button text="Save and dry-run" onAction="#dryRun"/>
-        <Button text="Save and reconcile" onAction="#reconcile"/>
-    </HBox>
+    </FlowPane>
+    <FlowPane hgap="8" vgap="6">
+        <Button fx:id="dryRunFileButton" onAction="#dryRunFile"/>
+        <Button fx:id="reconcileFileButton" onAction="#reconcileFile"/>
+        <Button fx:id="dryRunButton" onAction="#dryRun"/>
+        <Button fx:id="reconcileButton" onAction="#reconcile"/>
+        <Button text="Reload from disk" onAction="#reloadFromDisk"/>
+    </FlowPane>
     <TextArea fx:id="outcomeArea" editable="false" wrapText="true" prefRowCount="3"/>
 </VBox>

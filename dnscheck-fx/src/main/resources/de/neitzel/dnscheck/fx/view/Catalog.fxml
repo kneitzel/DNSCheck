@@ -1,19 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Menu?>
-<?import javafx.scene.control.MenuBar?>
-<?import javafx.scene.control.MenuItem?>
-<?import javafx.scene.control.SplitPane?>
-<?import javafx.scene.control.TreeView?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.StackPane?>
-<?import javafx.scene.layout.VBox?>
+<?import de.neitzel.fx.docking.DockPane?>
 <?import de.neitzel.fx.view.BindingList?>
-<?import de.neitzel.fx.view.Column?>
 <?import de.neitzel.fx.view.DirectBinding?>
-<?import de.neitzel.fx.view.Table?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 
 <BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
             fx:controller="de.neitzel.dnscheck.fx.view.CatalogController"
@@ -21,8 +12,6 @@
     <fx:define>
         <BindingList>
             <DirectBinding control="directoryLabel" property="text" path="directory" direction="view"/>
-            <DirectBinding control="entriesTable" property="selection" path="selected" direction="both"/>
-            <DirectBinding control="statusLabel" property="text" path="outcome" direction="view"/>
         </BindingList>
     </fx:define>
     <top>
@@ -39,20 +28,15 @@
     </top>
     <center>
         <SplitPane fx:id="catalogSplit" dividerPositions="0.22">
-            <TreeView fx:id="domainsTree" minWidth="160" prefWidth="240"/>
-            <StackPane>
-                <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
-                <Table fx:id="entriesTable" id="entriesTable" collection="entries"
-                       row="de.neitzel.dnscheck.fx.view.CatalogRow" onMouseClicked="#tableClicked"
-                       maxWidth="Infinity" maxHeight="Infinity">
-                    <Column header="Zone" attribute="zone" width="180"/>
-                    <Column header="Nameserver" attribute="nameserver" width="200"/>
-                    <Column header="Key file" attribute="keyFile" width="220"/>
-                    <Column header="Valid" attribute="valid" width="80"/>
-                    <Column header="Error" attribute="error" width="180"/>
-                </Table>
-                <VBox fx:id="editorHost" spacing="8" visible="false" managed="false"/>
-            </StackPane>
+            <VBox minWidth="160" prefWidth="240" spacing="8" style="-fx-padding: 8;">
+                <Label text="Zones"/>
+                <ListView fx:id="zonesList" VBox.vgrow="ALWAYS"/>
+                <HBox spacing="8">
+                    <Button fx:id="newZoneButton" text="New zone" onAction="#newZone" disable="true"/>
+                    <Button fx:id="addKeyButton" text="Add key" onAction="#addKey" disable="true"/>
+                </HBox>
+            </VBox>
+            <DockPane fx:id="editorHost"/>
         </SplitPane>
     </center>
     <bottom>

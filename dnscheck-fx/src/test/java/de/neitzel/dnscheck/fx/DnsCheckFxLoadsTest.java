@@ -11,11 +11,8 @@ import de.neitzel.injection.ApplicationContext;
 import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Region;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -25,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -76,11 +74,9 @@ class DnsCheckFxLoadsTest {
             new javafx.scene.Scene(catalog.getRoot(), 1200, 800);
             catalog.getRoot().applyCss();
             catalog.getRoot().layout();
-            assertTrue(catalog.getViewModel().getLatestMessage().getText().contains("does not exist"));
-            assertEquals("Zone", headerText(catalog.getRoot(), "entriesTable", 0));
-            assertEquals("Nameserver", headerText(catalog.getRoot(), "entriesTable", 1));
-            assertEquals("Valid", headerText(catalog.getRoot(), "entriesTable", 3));
-            assertEquals(180, headerCell(catalog.getRoot(), "entriesTable", 0).getPrefWidth());
+            assertNotNull(catalog.getRoot().lookup("#zonesList"));
+            assertNotNull(catalog.getRoot().lookup("#editorHost"));
+            assertTrue(catalog.getRoot().lookup("#newZoneButton").isDisabled());
 
             ZoneEditor editor = new ZoneEditor();
             editor.setZone("example.com");
@@ -103,33 +99,6 @@ class DnsCheckFxLoadsTest {
             assertEquals("192.0.2.10", ((de.neitzel.dnscheck.fx.model.RecordRow) table.getItems().getFirst()).value());
             assertEquals("ns1.example.com", text(zone.getRoot(), "ns1.example.com"));
         });
-    }
-
-    /**
-     * Returns the header text of one column.
-     *
-     * @param root    the loaded view
-     * @param tableId the table id
-     * @param index   the column index
-     * @return the header text
-     */
-    private static String headerText(Parent root, String tableId, int index) {
-        Label label = (Label) headerCell(root, tableId, index).lookup(".column-header");
-        return label.getText();
-    }
-
-    /**
-     * Returns one header cell.
-     *
-     * @param root    the loaded view
-     * @param tableId the table id
-     * @param index   the column index
-     * @return the cell
-     */
-    private static Region headerCell(Parent root, String tableId, int index) {
-        ScrollPane headerScroll = (ScrollPane) root.lookup("#" + tableId).lookup(".table-header-scroll");
-        HBox header = (HBox) headerScroll.getContent();
-        return (Region) header.getChildren().get(index);
     }
 
     /**

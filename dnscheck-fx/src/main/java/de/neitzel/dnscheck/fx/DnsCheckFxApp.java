@@ -9,7 +9,6 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-import java.util.ArrayList;
 import java.io.IOException;
 import java.nio.file.Path;
 
@@ -42,32 +41,23 @@ public class DnsCheckFxApp extends Application {
     public void start(Stage stage) {
         ApplicationContext context = new ApplicationContext(DnsCheckFxApp.class);
         Desk desk = context.getComponent(Desk.class);
-        desk.prepare(session(context.getComponent(RecentDirectories.class), System.getenv("DNSCHECK_DIRECTORY")), context);
+        desk.prepare(session(context.getComponent(RecentDirectories.class)), context);
         LoadedView loaded = ViewLoader.load(
                 CatalogController.class.getResource("Catalog.fxml"), desk.catalog(), context);
         stage.setTitle("DNSCheck");
         stage.setScene(new Scene(loaded.getRoot()));
-        stage.setOnCloseRequest(event -> {
-            if (!UnsavedChanges.confirm(desk.zone(), context.getComponent(ZoneFiles.class), stage)) event.consume();
-        });
         stage.show();
+        context.getComponent(CatalogController.class).start(stage);
     }
 
-    /** Prefer an explicit environment directory, then the most recent existing folder, then the working directory. */
-    static CatalogSession session(RecentDirectories recent, String override) {
-        String directory = override;
-        if (directory == null || directory.isBlank()) {
-            try {
-                directory = recent.existingDirectories().stream().findFirst().map(Path::toString).orElse(".");
-            } catch (IOException | RuntimeException unavailableHistory) {
-                // The catalog's Recent menu reports configuration errors after the window loads.
-                directory = ".";
-            }
-        }
+    /** A blank directory asks the main window to open the folder chooser. */
+    static CatalogSession session(RecentDirectories recent) {
         CatalogSession session = new CatalogSession();
-        session.setDirectory(directory);
-        session.setEntries(new ArrayList<>());
-        session.setOutcome("");
+        try {
+            session.setDirectory(recent.lastDirectory().map(Path::toString).orElse(""));
+        } catch (IOException | RuntimeException unavailableHistory) {
+            // The Recent menu reports configuration errors after the window loads.
+        }
         return session;
     }
 }
