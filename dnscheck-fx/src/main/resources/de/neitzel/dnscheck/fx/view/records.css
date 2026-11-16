@@ -7,3 +7,26 @@
 .file-legend { -fx-text-fill: #225482; }
 .removal-legend { -fx-text-fill: #9c342b; }
 .live-legend { -fx-text-fill: #226540; }
+
+.zone-action-icon {
+    -fx-fill: transparent;
+    -fx-stroke: -fx-text-base-color;
+    -fx-stroke-width: 1.4;
+    -fx-stroke-line-cap: round;
+    -fx-stroke-line-join: round;
+}
+
+/* Scoped opt-in semantic overrides. Unthemed consumers retain the historical defaults above. */
+.neitzel-theme .table-row-cell:file-entry { -fx-background-color: -dns-file-surface; }
+.neitzel-theme .table-row-cell:live-entry { -fx-background-color: -dns-live-surface; }
+.neitzel-theme .table-row-cell:removal-entry { -fx-background-color: -dns-removal-surface; }
+.neitzel-theme .table-row-cell .table-cell { -fx-background-color: transparent; -fx-text-fill: -dns-record-text; }
+.neitzel-theme .table-row-cell:selected { -fx-background-color: -nl-selection; }
+.neitzel-theme .table-row-cell:selected .table-cell { -fx-background-color: transparent; -fx-text-fill: -nl-selection-text; }
+.neitzel-theme .file-legend { -fx-text-fill: -dns-file-indicator; }
+.neitzel-theme .live-legend { -fx-text-fill: -dns-live-indicator; }
+.neitzel-theme .removal-legend { -fx-text-fill: -dns-removal-indicator; }
+/* Retained rows remain readable while zone operations disable editing. */
+.neitzel-theme .table-view:disabled, .neitzel-theme .table-row-cell:disabled,
+.neitzel-theme .table-cell:disabled { -fx-opacity: 1; }
+.neitzel-theme .table-view:disabled { -fx-border-style: dashed; }

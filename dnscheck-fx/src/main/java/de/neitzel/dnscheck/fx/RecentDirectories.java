@@ -6,15 +6,14 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.inject.Singleton;
 
 import java.io.IOException;
-import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 /** Persistent, most-recent-first history of successfully opened local directories. */
 @Singleton
@@ -62,6 +61,13 @@ public class RecentDirectories {
         return directories(read());
     }
 
+    /** Startup uses the last opened folder, even if older entries still exist. */
+    public synchronized Optional<Path> lastDirectory() throws IOException {
+        JsonNode entries = read().get("recentDirectories");
+        if (entries == null || entries.isEmpty() || !entries.get(0).isTextual()) return Optional.empty();
+        return existingDirectory(entries.get(0).textValue());
+    }
+
     public synchronized void remember(Path directory) throws IOException {
         Path opened = directory.toRealPath();
         if (!Files.isDirectory(opened)) throw new IOException("Not a directory: " + directory);
@@ -71,6 +77,22 @@ public class RecentDirectories {
         recent.addFirst(opened);
         var array = settings.putArray("recentDirectories");
         recent.stream().limit(LIMIT).map(Path::toString).forEach(array::add);
+        write(settings);
+    }
+
+    /** Application appearance preference, independent of directory and docking layouts. */
+    public synchronized String theme() throws IOException {
+        JsonNode value = read().get("theme");
+        if (value == null) return "light";
+        if (!value.isTextual()) throw new IOException("Expected theme to be a string in " + configuration);
+        return value.textValue();
+    }
+
+    public synchronized void rememberTheme(String id) throws IOException {
+        if (!java.util.Set.of("light", "dark", "high-contrast").contains(id))
+            throw new IllegalArgumentException("Unknown DNSCheck theme: " + id);
+        ObjectNode settings = read();
+        settings.put("theme", id);
         write(settings);
     }
 
@@ -93,17 +115,20 @@ public class RecentDirectories {
         if (entries == null) return List.of();
         for (JsonNode entry : entries) {
             if (!entry.isTextual()) continue;
-            try {
-                Path path = Path.of(entry.textValue());
-                if (!path.isAbsolute() || !Files.isDirectory(path)) continue;
-                Path canonical = path.toRealPath();
-                if (!recent.contains(canonical)) recent.add(canonical);
-                if (recent.size() == LIMIT) break;
-            } catch (IOException | InvalidPathException | SecurityException ignored) {
-                // Missing, inaccessible or malformed entries do not belong in the menu.
-            }
+            existingDirectory(entry.textValue()).filter(path -> !recent.contains(path)).ifPresent(recent::add);
+            if (recent.size() == LIMIT) break;
         }
         return List.copyOf(recent);
+    }
+
+    private static Optional<Path> existingDirectory(String value) {
+        try {
+            Path path = Path.of(value);
+            return path.isAbsolute() && Files.isDirectory(path)
+                    ? Optional.of(path.toRealPath()) : Optional.empty();
+        } catch (IOException | InvalidPathException | SecurityException ignored) {
+            return Optional.empty();
+        }
     }
 
     private void write(ObjectNode settings) throws IOException {
@@ -111,11 +136,7 @@ public class RecentDirectories {
         Path temporary = Files.createTempFile(configuration.getParent(), "config-", ".tmp");
         try {
             mapper.writerWithDefaultPrettyPrinter().writeValue(temporary.toFile(), settings);
-            try {
-                Files.move(temporary, configuration, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } catch (AtomicMoveNotSupportedException unsupported) {
-                Files.move(temporary, configuration, StandardCopyOption.REPLACE_EXISTING);
-            }
+            AtomicFiles.replace(temporary, configuration);
         } finally {
             Files.deleteIfExists(temporary);
         }

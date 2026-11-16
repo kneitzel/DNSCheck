@@ -2,7 +2,6 @@ package de.neitzel.dnscheck.fx;
 
 import de.neitzel.dnscheck.fx.model.CatalogSession;
 import de.neitzel.dnscheck.fx.model.ZoneEditor;
-import de.neitzel.fx.view.ViewModel;
 import de.neitzel.injection.ApplicationContext;
 import jakarta.inject.Singleton;
 
@@ -28,11 +27,6 @@ public class Desk {
      * The container that loads Views.
      */
     private ApplicationContext context;
-
-    /**
-     * The ViewModel of the catalog View, or {@code null} before that View has loaded.
-     */
-    private ViewModel catalogView;
 
     private Path loadedDirectory;
 
@@ -86,24 +80,6 @@ public class Desk {
      */
     public ApplicationContext context() {
         return context;
-    }
-
-    /**
-     * Records the ViewModel of the catalog View.
-     *
-     * @param catalogView the catalog ViewModel
-     */
-    public void catalogView(ViewModel catalogView) {
-        this.catalogView = catalogView;
-    }
-
-    /**
-     * Returns the ViewModel of the catalog View.
-     *
-     * @return the catalog ViewModel, or {@code null} before the catalog View has loaded
-     */
-    public ViewModel catalogView() {
-        return catalogView;
     }
 
     /**

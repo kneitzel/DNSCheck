@@ -1,28 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Menu?>
-<?import javafx.scene.control.MenuBar?>
-<?import javafx.scene.control.MenuItem?>
-<?import javafx.scene.control.SplitPane?>
-<?import javafx.scene.control.TreeView?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.StackPane?>
-<?import javafx.scene.layout.VBox?>
+<?import de.neitzel.fx.docking.DockPane?>
 <?import de.neitzel.fx.view.BindingList?>
-<?import de.neitzel.fx.view.Column?>
 <?import de.neitzel.fx.view.DirectBinding?>
-<?import de.neitzel.fx.view.Table?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.SVGPath?>
 
 <BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
             fx:controller="de.neitzel.dnscheck.fx.view.CatalogController"
-            prefWidth="1200" prefHeight="800">
+            prefWidth="1200" prefHeight="800" stylesheets="@catalog.css">
     <fx:define>
         <BindingList>
             <DirectBinding control="directoryLabel" property="text" path="directory" direction="view"/>
-            <DirectBinding control="entriesTable" property="selection" path="selected" direction="both"/>
-            <DirectBinding control="statusLabel" property="text" path="outcome" direction="view"/>
         </BindingList>
     </fx:define>
     <top>
@@ -33,26 +23,56 @@
                     <MenuItem fx:id="reloadMenu" text="_Reload" onAction="#reload" accelerator="Shortcut+R"/>
                     <Menu fx:id="recentMenu" text="_Recent" onShowing="#refreshRecent"/>
                 </Menu>
+                <Menu text="_View"><Menu fx:id="themeMenu" text="_Theme"/></Menu>
             </MenuBar>
+            <Label fx:id="themeMessage" wrapText="true" styleClass="dns-error" style="-fx-padding: 0 12;"/>
             <Label fx:id="directoryLabel" style="-fx-padding: 0 12 6 12;"/>
         </VBox>
     </top>
     <center>
         <SplitPane fx:id="catalogSplit" dividerPositions="0.22">
-            <TreeView fx:id="domainsTree" minWidth="160" prefWidth="240"/>
-            <StackPane>
-                <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
-                <Table fx:id="entriesTable" id="entriesTable" collection="entries"
-                       row="de.neitzel.dnscheck.fx.view.CatalogRow" onMouseClicked="#tableClicked"
-                       maxWidth="Infinity" maxHeight="Infinity">
-                    <Column header="Zone" attribute="zone" width="180"/>
-                    <Column header="Nameserver" attribute="nameserver" width="200"/>
-                    <Column header="Key file" attribute="keyFile" width="220"/>
-                    <Column header="Valid" attribute="valid" width="80"/>
-                    <Column header="Error" attribute="error" width="180"/>
-                </Table>
-                <VBox fx:id="editorHost" spacing="8" visible="false" managed="false"/>
-            </StackPane>
+            <TabPane fx:id="catalogTabs" side="LEFT" rotateGraphic="false" tabClosingPolicy="UNAVAILABLE"
+                     minWidth="160" prefWidth="240" styleClass="catalog-tabs">
+                <Tab id="zonesTab">
+                    <tooltip><Tooltip text="Zones"/></tooltip>
+                    <graphic>
+                        <SVGPath styleClass="catalog-icon" accessibleText="Zones"
+                                 content="M 10 1 A 9 9 0 1 0 10 19 A 9 9 0 1 0 10 1 M 1 10 H 19 M 10 1 C 4 6 4 14 10 19 M 10 1 C 16 6 16 14 10 19"/>
+                    </graphic>
+                    <VBox spacing="8" styleClass="catalog-content">
+                        <HBox alignment="CENTER_LEFT">
+                            <Label fx:id="zonesHeading" text="Zones"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="newZoneButton" text="+" onAction="#newZone" disable="true"
+                                    accessibleText="New zone" styleClass="catalog-add">
+                                <tooltip><Tooltip text="New zone"/></tooltip>
+                            </Button>
+                        </HBox>
+                        <ListView fx:id="zonesList" VBox.vgrow="ALWAYS"/>
+                    </VBox>
+                </Tab>
+                <Tab id="keysTab">
+                    <tooltip><Tooltip text="Keys"/></tooltip>
+                    <graphic>
+                        <SVGPath styleClass="catalog-icon" accessibleText="Keys"
+                                 content="M 12 1 A 6 6 0 1 0 12 13 A 6 6 0 1 0 12 1 M 8 11 L 1 18 V 21 H 4 V 18 H 7 V 15 L 9 13 M 14 5 A 1 1 0 1 0 14 7 A 1 1 0 1 0 14 5"/>
+                    </graphic>
+                    <VBox spacing="8" styleClass="catalog-content">
+                        <HBox alignment="CENTER_LEFT">
+                            <Label fx:id="keysHeading" text="Keys"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="addKeyButton" text="+" onAction="#addKey" disable="true"
+                                    accessibleText="Add key" styleClass="catalog-add">
+                                <tooltip><Tooltip text="Add key"/></tooltip>
+                            </Button>
+                        </HBox>
+                        <ListView fx:id="keysList" VBox.vgrow="ALWAYS">
+                            <placeholder><Label text="No keys in this folder" wrapText="true"/></placeholder>
+                        </ListView>
+                    </VBox>
+                </Tab>
+            </TabPane>
+            <DockPane fx:id="editorHost"/>
         </SplitPane>
     </center>
     <bottom>

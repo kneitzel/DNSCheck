@@ -7,6 +7,7 @@ import de.neitzel.dnscheck.core.reconcile.ZoneReconciliationResult;
 import de.neitzel.dnscheck.core.util.GlobMatcher;
 import de.neitzel.dnscheck.core.zone.LocalZoneDirectory;
 import de.neitzel.dnscheck.core.zone.ZoneNameNormalizer;
+import de.neitzel.dnscheck.core.zone.ZoneDefinitionStore;
 import de.neitzel.dnscheck.fx.model.*;
 import jakarta.inject.Singleton;
 import org.xbill.DNS.DClass;
@@ -14,6 +15,7 @@ import org.xbill.DNS.Name;
 import org.xbill.DNS.Type;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +26,7 @@ import java.util.Objects;
 public class ZoneFiles {
     private final LiveZoneClient liveClient;
     private final NsupdateClient updater;
+    private final ZoneDefinitionStore definitions = ZoneDefinitionStore.localDirectoryStore();
 
     public ZoneFiles() { this(new LiveZoneClient(), new NsupdateClient()); }
     ZoneFiles(LiveZoneClient liveClient, NsupdateClient updater) {
@@ -32,13 +35,28 @@ public class ZoneFiles {
     }
 
     public List<CatalogEntryModel> load(Path directory) throws IOException {
+        try (var files = Files.list(directory)) {
+            if (files.noneMatch(file -> file.getFileName().toString().endsWith(".domain"))) return List.of();
+        }
         return new LocalZoneDirectory(directory).entries().stream().map(CatalogEntryModel::from).toList();
     }
     public ZoneEditor open(Path directory, CatalogEntryModel entry) throws IOException {
         return ZoneEditor.from(new LocalZoneDirectory(directory).read(entry.getZone()));
     }
+    public ZoneDefinition readDefinition(Path source) throws IOException {
+        Path file = source.toAbsolutePath().normalize();
+        Path real = file.toRealPath();
+        if (!real.startsWith(file.getParent().toRealPath()) || !Files.isRegularFile(real)) {
+            throw new IOException("Zone file must stay inside the working folder.");
+        }
+        return definitions.read(file);
+    }
+
     public void save(ZoneEditor editor) throws IOException {
         var definition = editor.toDefinition();
+        if (!Objects.equals(readDefinition(definition.sourcePath()), editor.getDiskDefinition())) {
+            throw new IOException("Zone file changed on disk. Reload it before saving.");
+        }
         directory(definition).write(definition);
         editor.markSaved();
     }
