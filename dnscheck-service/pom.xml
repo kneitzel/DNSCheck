@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>dnscheck-service</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
     <name>DNSCheck Service</name>
     <description>Quarkus service with REST API and React UI</description>
 

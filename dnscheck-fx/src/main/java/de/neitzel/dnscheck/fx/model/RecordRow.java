@@ -21,6 +21,14 @@ public record RecordRow(RecordSpec stored, DnsRecord live, String status) {
         return stored == null ? Kind.LIVE : stored.deletionMarker() ? Kind.REMOVAL : Kind.ENFORCED;
     }
 
+    public String entry() {
+        return switch (kind()) {
+            case ENFORCED -> "✓ Enforced entry";
+            case REMOVAL -> "− Enforced removal";
+            case LIVE -> "● Live only";
+        };
+    }
+
     public String name() { return stored == null ? live.nameFqdn() : stored.nameFqdn(); }
     public String type() { return stored == null ? live.type() : stored.type(); }
     public String value() {

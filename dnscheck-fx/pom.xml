@@ -11,13 +11,14 @@
     </parent>
 
     <artifactId>dnscheck-fx</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
     <name>DNSCheck FX</name>
     <description>JavaFX desktop application for zone definitions and reconciliation</description>
 
     <properties>
         <javafx.version>27.0.1</javafx.version>
         <javafx.maven.plugin>0.0.8</javafx.maven.plugin>
-        <neitzellib.version>1.0</neitzellib.version>
+        <neitzellib.version>1.0.1</neitzellib.version>
         <lombok.version>1.18.48</lombok.version>
         <main.class>de.neitzel.dnscheck.fx.Main</main.class>
         <jpackage.skip>false</jpackage.skip>
@@ -45,6 +46,11 @@
         <dependency>
             <groupId>de.neitzel</groupId>
             <artifactId>dnscheck-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>de.neitzel.lib</groupId>
+            <artifactId>gson</artifactId>
+            <version>${neitzellib.version}</version>
         </dependency>
         <dependency>
             <groupId>de.neitzel.lib</groupId>

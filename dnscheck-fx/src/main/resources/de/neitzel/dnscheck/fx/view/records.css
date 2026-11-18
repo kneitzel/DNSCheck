@@ -1,9 +1,9 @@
-.table-row-cell:file-entry { -fx-background-color: #e6f0fc; }
-.table-row-cell:removal-entry { -fx-background-color: #fbe8e4; }
-.table-row-cell:live-entry { -fx-background-color: #e3f3e9; }
-.table-row-cell:selected { -fx-background-color: #285a89; }
-.table-row-cell .table-cell { -fx-text-fill: #17212b; }
-.table-row-cell:selected .table-cell { -fx-text-fill: white; }
+.result-row:file-entry { -fx-background-color: #e6f0fc; }
+.result-row:removal-entry { -fx-background-color: #fbe8e4; }
+.result-row:live-entry { -fx-background-color: #e3f3e9; }
+.result-row:selected { -fx-background-color: #285a89; }
+.result-row .record-cell { -fx-text-fill: #17212b; }
+.result-row:selected .record-cell { -fx-text-fill: white; }
 .file-legend { -fx-text-fill: #225482; }
 .removal-legend { -fx-text-fill: #9c342b; }
 .live-legend { -fx-text-fill: #226540; }
@@ -17,16 +17,19 @@
 }
 
 /* Scoped opt-in semantic overrides. Unthemed consumers retain the historical defaults above. */
-.neitzel-theme .table-row-cell:file-entry { -fx-background-color: -dns-file-surface; }
-.neitzel-theme .table-row-cell:live-entry { -fx-background-color: -dns-live-surface; }
-.neitzel-theme .table-row-cell:removal-entry { -fx-background-color: -dns-removal-surface; }
-.neitzel-theme .table-row-cell .table-cell { -fx-background-color: transparent; -fx-text-fill: -dns-record-text; }
-.neitzel-theme .table-row-cell:selected { -fx-background-color: -nl-selection; }
-.neitzel-theme .table-row-cell:selected .table-cell { -fx-background-color: transparent; -fx-text-fill: -nl-selection-text; }
+.neitzel-theme .result-row:file-entry { -fx-background-color: -dns-file-surface; }
+.neitzel-theme .result-row:live-entry { -fx-background-color: -dns-live-surface; }
+.neitzel-theme .result-row:removal-entry { -fx-background-color: -dns-removal-surface; }
+.neitzel-theme .result-row .record-cell { -fx-background-color: transparent; -fx-text-fill: -dns-record-text; }
+.neitzel-theme .result-row:selected { -fx-background-color: -nl-selection; }
+.neitzel-theme .result-row:selected .record-cell { -fx-background-color: transparent; -fx-text-fill: -nl-selection-text; }
 .neitzel-theme .file-legend { -fx-text-fill: -dns-file-indicator; }
 .neitzel-theme .live-legend { -fx-text-fill: -dns-live-indicator; }
 .neitzel-theme .removal-legend { -fx-text-fill: -dns-removal-indicator; }
 /* Retained rows remain readable while zone operations disable editing. */
-.neitzel-theme .table-view:disabled, .neitzel-theme .table-row-cell:disabled,
-.neitzel-theme .table-cell:disabled { -fx-opacity: 1; }
-.neitzel-theme .table-view:disabled { -fx-border-style: dashed; }
+.neitzel-theme #recordTable:disabled, .neitzel-theme .result-row:disabled,
+.neitzel-theme .record-cell:disabled { -fx-opacity: 1; }
+.neitzel-theme #recordTable:disabled { -fx-border-style: dashed; }
+
+.record-cell { -fx-padding: 5 6 5 6; }
+.neitzel-theme #recordTable .scroll-pane:disabled { -fx-opacity: 1; }

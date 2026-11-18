@@ -160,6 +160,8 @@ public class CatalogController implements HasViewModel {
             }
             saveDelay.stop();
             saveLayout(request.snapshot());
+            if (request.reason() == ShutdownReason.MAIN_WINDOW && desk.getGridConfiguration() != null)
+                return closeGridConfiguration();
             return CompletableFuture.completedFuture(ShutdownDecision.PROCEED);
         });
         docking = DockingManager.attach(stage, editorHost, options);
@@ -180,6 +182,37 @@ public class CatalogController implements HasViewModel {
                 scheduleSave();
             }
         });
+    }
+
+    private java.util.concurrent.CompletionStage<ShutdownDecision> closeGridConfiguration() {
+        CompletableFuture<ShutdownDecision> answer = new CompletableFuture<>();
+        attemptGridSettingsClose(answer);
+        return answer;
+    }
+
+    private void attemptGridSettingsClose(CompletableFuture<ShutdownDecision> answer) {
+        desk.getGridConfiguration().closeAsync().whenComplete((ok,error) -> Platform.runLater(() -> {
+            if (error == null) { answer.complete(ShutdownDecision.PROCEED); return; }
+            ButtonType retry = new ButtonType("Retry", ButtonBar.ButtonData.OK_DONE);
+            ButtonType without = new ButtonType("Quit without saving grid settings", ButtonBar.ButtonData.OTHER);
+            ButtonType cancel = new ButtonType("Cancel quit", ButtonBar.ButtonData.CANCEL_CLOSE);
+            Alert alert = new Alert(Alert.AlertType.ERROR,
+                    "Grid settings could not be saved: " + text(error) + "\nZone edits and DNS operations retain their own checks.",
+                    retry, without, cancel);
+            alert.setTitle("Unsaved grid settings");
+            alert.setHeaderText("Choose how to finish quitting");
+            alert.initOwner(stage);
+            alert.setOnHidden(event -> {
+                if (alert.getResult() == retry) attemptGridSettingsClose(answer);
+                else if (alert.getResult() == without) desk.getGridConfiguration().discardAndCloseAsync()
+                        .whenComplete((ignored,failure) -> Platform.runLater(() -> {
+                            if (failure != null) note("Could not close grid settings: " + text(failure));
+                            answer.complete(failure == null ? ShutdownDecision.PROCEED : ShutdownDecision.CANCEL);
+                        }));
+                else answer.complete(ShutdownDecision.CANCEL);
+            });
+            alert.show();
+        }));
     }
 
     private void scheduleSave() {
@@ -542,7 +575,7 @@ public class CatalogController implements HasViewModel {
         statusLabel.setText(actionStatus.isEmpty() ? status : actionStatus);
     }
 
-    private static String text(Exception failure) {
+    private static String text(Throwable failure) {
         String message = failure.getMessage();
         return message == null || message.isBlank() ? "Could not read the zone catalog." : message;
     }

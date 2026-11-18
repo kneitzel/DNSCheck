@@ -30,6 +30,9 @@ public class Desk {
 
     private Path loadedDirectory;
 
+    @lombok.Getter @lombok.Setter
+    private de.neitzel.grid.GridApplicationConfiguration gridConfiguration;
+
     /** Capture pending configuration before loading. */
     public Path requestedDirectory() {
         return Path.of(catalog.getDirectory()).toAbsolutePath().normalize();
