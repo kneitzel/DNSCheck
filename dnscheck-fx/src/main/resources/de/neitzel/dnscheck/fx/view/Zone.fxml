@@ -3,12 +3,15 @@
 <?import javafx.scene.layout.*?>
 <?import de.neitzel.fx.view.BindingList?>
 <?import de.neitzel.fx.view.DirectBinding?>
+<?import de.neitzel.fx.view.DataGrid?>
+<?import de.neitzel.fx.view.DataGridColumn?>
 
 <VBox fx:id="zoneRoot" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
       fx:controller="de.neitzel.dnscheck.fx.view.ZoneController" spacing="8"
       stylesheets="@records.css">
     <fx:define>
         <BindingList>
+            <DirectBinding control="recordTable" property="items" path="recordRows" direction="view"/>
             <DirectBinding control="zoneLabel" property="text" path="zone" direction="view"/>
             <DirectBinding control="nameserverField" property="text" path="nameserver" direction="both"/>
             <DirectBinding control="keyFileField" property="value" path="keyFile" direction="both"/>
@@ -30,16 +33,27 @@
         <Label text="● Live only" styleClass="live-legend"/>
     </HBox>
     <Label fx:id="liveStatus" wrapText="true"/>
-    <TableView fx:id="recordTable" id="recordTable" prefHeight="350" VBox.vgrow="ALWAYS">
+    <DataGrid fx:id="recordTable" prefHeight="350" VBox.vgrow="ALWAYS"
+              pageSize="50" maximumPageSize="250" groupingEnabled="true" groupBy="type"
+              groupsCollapsed="true" inactiveGroupHistoryLimit="1000"
+              setupId="dnscheck.zone-records" setupVersion="1">
         <columns>
-            <TableColumn fx:id="kindColumn" text="" prefWidth="40" sortable="false"/>
-            <TableColumn fx:id="nameColumn" text="Name" prefWidth="190"/>
-            <TableColumn fx:id="typeColumn" text="Type" prefWidth="70"/>
-            <TableColumn fx:id="valueColumn" text="File / live value" prefWidth="280"/>
-            <TableColumn fx:id="ttlColumn" text="TTL policy / live TTL" prefWidth="130"/>
-            <TableColumn fx:id="statusColumn" text="Status" prefWidth="190"/>
+            <DataGridColumn id="kind" attribute="entry" groupAttribute="kind" header="Entry" width="150"
+                            checklist="SOURCE_WIDE" type="dnscheck.record.kind.text.v1">
+                <groupLabels ENFORCED="✓ Enforced entry" REMOVAL="− Enforced removal" LIVE="● Live only"/>
+            </DataGridColumn>
+            <DataGridColumn id="name" header="Name" width="190"
+                            checklist="SOURCE_WIDE" type="dnscheck.record.name.text.v1"/>
+            <DataGridColumn id="type" header="Type" width="120"
+                            checklist="SOURCE_WIDE" type="dnscheck.record.type.text.v1"/>
+            <DataGridColumn id="value" header="File / live value" width="280"
+                            checklist="SOURCE_WIDE" type="dnscheck.record.value.text.v1"/>
+            <DataGridColumn id="ttl" header="TTL policy / live TTL" width="160"
+                            checklist="SOURCE_WIDE" type="dnscheck.record.ttl.text.v1"/>
+            <DataGridColumn id="status" header="Status" width="190"
+                            checklist="SOURCE_WIDE" type="dnscheck.record.status.text.v1"/>
         </columns>
-    </TableView>
+    </DataGrid>
     <FlowPane hgap="8" vgap="6">
         <Button text="New record…" onAction="#addRecord"/>
         <Button text="Record details…" onAction="#editRecord"/>

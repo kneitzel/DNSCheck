@@ -23,6 +23,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -55,6 +57,8 @@ class DnsCheckFxLoadsTest {
      */
     @Test
     void catalogAndZoneViewsLoad() throws Exception {
+        CountDownLatch gridLoaded = new CountDownLatch(1);
+        AtomicReference<de.neitzel.fx.view.DataGrid<?, ?>> records = new AtomicReference<>();
         onFx(() -> {
             RecentDirectories recent = new RecentDirectories(temp.resolve("config.json"));
             ApplicationContext context = new ApplicationContext(DnsCheckFxApp.class) {
@@ -92,12 +96,44 @@ class DnsCheckFxLoadsTest {
             desk.edit(editor);
 
             LoadedView zone = ViewLoader.load(ZoneController.class.getResource("Zone.fxml"), editor, context);
-            var table = (javafx.scene.control.TableView<?>) zone.getRoot().lookup("#recordTable");
-            assertEquals(1, table.getItems().size());
-            assertEquals("Name", table.getColumns().get(1).getText());
-            assertEquals("Status", table.getColumns().get(5).getText());
-            assertEquals("192.0.2.10", ((de.neitzel.dnscheck.fx.model.RecordRow) table.getItems().getFirst()).value());
+            var table = (de.neitzel.fx.view.DataGrid<?, ?>) zone.getRoot().lookup("#recordTable");
+            records.set(table);
+            assertSame(editor.getRecordRows(), table.getItems(), "Merged rows must be bound to the declared grid");
+            assertEquals(6, table.getColumns().size());
+            assertEquals("type", table.getGroupBy());
+            table.stateProperty().addListener((observable, before, after) -> {
+                if (after.phase() == de.neitzel.grid.GridCoordinator.Phase.READY) gridLoaded.countDown();
+            });
             assertEquals("ns1.example.com", text(zone.getRoot(), "ns1.example.com"));
+        });
+        assertTrue(gridLoaded.await(5, TimeUnit.SECONDS));
+        onFx(() -> {
+            var rows = records.get().stateProperty().get().result().rows();
+            assertEquals(1, rows.size());
+            assertEquals("192.0.2.10", ((de.neitzel.dnscheck.fx.model.RecordRow) rows.getFirst().model()).value());
+        });
+    }
+
+    @Test
+    void zoneFxmlShowsItsGridWithoutRuntimeData() throws Exception {
+        onFx(() -> {
+            try {
+                var loader = new javafx.fxml.FXMLLoader(ZoneController.class.getResource("Zone.fxml"));
+                loader.setControllerFactory(type -> new ZoneController(null, null));
+                javafx.scene.Parent root = loader.load();
+                var grid = (de.neitzel.fx.view.DataGrid<?, ?>) root.lookup("#recordTable");
+                assertNotNull(grid);
+                assertNull(root.lookup("#recordGridHost"));
+                assertNull(grid.getItems());
+                assertNull(grid.stateProperty().get(), "Designer loading must not start a query");
+                assertEquals(6, grid.getColumns().size());
+                assertEquals("Name", grid.getColumns().get(1).getHeader());
+                assertEquals("✓ Enforced entry", grid.getColumns().getFirst().getGroupLabels().get("ENFORCED"));
+                assertEquals(6, grid.lookupAll(".column-header").size());
+                grid.close();
+            } catch (java.io.IOException error) {
+                throw new java.io.UncheckedIOException(error);
+            }
         });
     }
 

@@ -41,6 +41,7 @@ public class DnsCheckFxApp extends Application {
     public void start(Stage stage) {
         ApplicationContext context = new ApplicationContext(DnsCheckFxApp.class);
         Desk desk = context.getComponent(Desk.class);
+        desk.setGridConfiguration(de.neitzel.gson.grid.GridSetupFiles.forApplication("DNSCheck"));
         desk.prepare(session(context.getComponent(RecentDirectories.class)), context);
         LoadedView loaded = ViewLoader.load(
                 CatalogController.class.getResource("Catalog.fxml"), desk.catalog(), context);

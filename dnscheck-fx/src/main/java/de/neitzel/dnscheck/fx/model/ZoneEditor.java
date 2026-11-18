@@ -18,6 +18,7 @@ public class ZoneEditor {
     private String keyFile = "";
     private String sourcePath = "";
     private List<RecordEditor> records = new ArrayList<>();
+    private List<RecordRow> recordRows = new ArrayList<>();
     private String outcome = "";
     private boolean applying;
     @Setter(AccessLevel.NONE)

@@ -7,9 +7,9 @@ Views bind to ordinary Java models through the NeitzelLib `fx` module. That modu
 ## Build the desktop app
 
 Use a full JDK 25 and Maven. The desktop module declares the public Gitea
-Maven registry and Maven downloads
-[NeitzelLib FX 1.0](https://gitea.neitzel.de/konrad/NeitzelLib/releases/tag/v1.0)
-and its dependencies automatically.
+Maven registry and uses NeitzelLib `1.0.1`, including the DataGrid viewport,
+FXML declaration, grouping and saved setup support. Maven resolves the release
+and its transitive library modules from that registry.
 
 From the DNSCheck repository root:
 
@@ -91,13 +91,92 @@ Closing an edited tab, switching folders, and quitting offer **Save**,
 pending edits. If a definition changed on disk, use **Reload from disk** in its
 editor to confirm discarding the pending edits and load the current file.
 
+## Group, filter and arrange zone records
+
+The records view declares NeitzelLib `DataGrid` directly in `Zone.fxml`.
+Columns, widths, filters, page/group defaults and saved-setup schema IDs are
+configured there. A `DirectBinding` shares `ZoneEditor.recordRows`, the merged
+file/live view, with the grid's `items` property. `ZoneRecordGrid` supplies stable
+keys, row appearance/actions and persistence startup; it does not construct the
+control. The file-only editable `records` collection remains separate.
+
+The records view uses NeitzelLib `DataGrid`. First-use defaults show 50 records per
+page, grouped by Type with groups collapsed. Expand a triangle to inspect the
+records. Group headings and counts describe the current page: the same type may
+appear again on another page. Explicit All uses the existing large-result warning.
+Collapsing a group does not change page counts or query live DNS.
+
+Drag a header's right boundary to resize that column; release applies the width
+and Escape cancels. Drag a header label to reorder columns or into the grouping
+area to add a grouping level. Reorder the grouping chips to change nesting; ×
+removes a level. All six columns are movable and groupable, including TTL as
+policy text (Ignore, Zone default, numeric text, or a removal marker). Grouped
+columns remain visible. Use **Grid setup → Column settings…** for keyboard
+alternatives to dragging.
+
+Use each header's filter button for text conditions or source-wide checklists.
+Filters combine with AND and remain visible above the paging controls, including
+when nothing matches. **Clear filters** removes them without changing grouping or
+widths. Click a header label to toggle its source sort; groups themselves stay
+ascending and rows inside each group retain source order. Grid Refresh only reruns
+the local query; **Refresh live DNS** performs AXFR.
+
+Double-click a visible row, press Enter on it, or choose **Record details…** to
+open the existing editor. A record hidden by collapse keeps its selection key but
+is unavailable to selection-based actions until visible again. SOA remains
+read-only. Grouping, resizing, sorting and filtering do not modify zone definitions,
+keys or live DNS.
+
+## Saved grid setups
+
+DNSCheck uses one application-wide saved record-grid setup across zones, working
+folders and floating windows. It includes widths/order, grouping, expansion,
+filters, sort and page size. A saved name filter can therefore hide every record
+in a different zone; use the active-filter indication and Clear filters to recover.
+Open tabs keep their own arrangement until **Grid setup → Reload saved setup**;
+new tabs restore the latest successfully saved setup. The latest committed change
+replaces the complete saved setup rather than merging fields from open tabs.
+
+Committed changes save automatically after a short debounce. Settings status and
+recovery controls appear separately from live DNS and reconciliation outcomes.
+**Reset setup** transactionally restores current defaults. **Reset expansion** only
+resets disclosure choices. Neither reload/reset nor a layout change requests AXFR.
+At initial opening, restoration gates the first record query and the already
+scheduled first live load. An unreadable/incompatible settings file keeps zone
+settings accessible and offers Retry or explicit Reset before record loading.
+
+Saved grid documents live under the shared native application configuration path:
+
+- macOS: `~/Library/Application Support/DNSCheck/grids/`
+- Windows: `%APPDATA%/DNSCheck/grids/` (with the native roaming fallback)
+- Linux: `$XDG_CONFIG_HOME/DNSCheck/grids/`, or `~/.config/DNSCheck/grids/`
+
+These JSON documents are separate from the existing history/theme `config.json`
+and the working folder's `.dnscheck-layout.json`; neither is migrated. No row data,
+selection, current page, TSIG credentials or unfinished record drafts are saved in
+a grid setup. Expansion remembers current group paths plus a bounded inactive
+history, so very old evicted paths may return to the collapsed default.
+
+A competing application instance produces a settings conflict with explicit Reload
+or Overwrite recovery. Failed writes keep the last good document and latest unsaved
+setup. On quit, the existing record-operation and zone-edit checks run first,
+followed by asynchronous settings flush. A failure offers Retry, Cancel quit, or
+explicit Quit without saving grid settings. Closing a tab or switching folders
+keeps the application persistence service alive.
+
+`ZoneRecordGrid` is the consumer example: explicit scalar/group mappings,
+source-wide filter providers, setup definition, per-grid persistence attachment,
+initial loading gate and tab disposal. The NeitzelLib
+[layout/persistence guide](../../NeitzelLib/fx/docs/data-grid-layout.md) describes
+the public developer API.
+
 ## Shared themes
 
 Choose **View → Theme → Light / Dark / High contrast**. DNSCheck uses the shared
 NeitzelLib themes and its own semantic palette for enforced entries, removal
 entries and live-only records. Their ✓ / − / ● indicators and text legend retain
 their meaning under selection. Disabled retained rows stay readable and use a
-dashed table boundary. The application still uses its existing `TableView` and
+dashed grid boundary. The record view uses NeitzelLib `DataGrid` and the existing
 record dialogs; changing themes does not reload records, issue AXFR, save a zone,
 or reconcile DNS.
 

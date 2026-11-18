@@ -11,9 +11,6 @@ import de.neitzel.fx.view.ViewModel;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import javafx.application.Platform;
-import javafx.beans.property.ReadOnlyStringWrapper;
-import javafx.beans.property.SimpleObjectProperty;
-import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
@@ -21,7 +18,6 @@ import javafx.scene.layout.VBox;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.function.Function;
 
 /** A merged file/live record view with explicit popup editing and background network operations. */
 @Singleton
@@ -46,13 +42,8 @@ public class ZoneController implements HasViewModel {
     @FXML private Button reconcileFileButton;
     @FXML private Button dryRunButton;
     @FXML private Button reconcileButton;
-    @FXML private TableView<RecordRow> recordTable;
-    @FXML private TableColumn<RecordRow, RecordRow.Kind> kindColumn;
-    @FXML private TableColumn<RecordRow, String> nameColumn;
-    @FXML private TableColumn<RecordRow, String> typeColumn;
-    @FXML private TableColumn<RecordRow, String> valueColumn;
-    @FXML private TableColumn<RecordRow, String> ttlColumn;
-    @FXML private TableColumn<RecordRow, String> statusColumn;
+    @FXML private de.neitzel.fx.view.DataGrid<String, RecordRow> recordTable;
+    private ZoneRecordGrid records;
 
     @Inject
     public ZoneController(Desk desk, ZoneFiles zoneFiles) {
@@ -65,35 +56,10 @@ public class ZoneController implements HasViewModel {
         this.viewModel = viewModel;
         this.editor = desk.zone();
         liveSnapshot = null;
-        column(nameColumn, RecordRow::name);
-        column(typeColumn, RecordRow::type);
-        column(valueColumn, RecordRow::value);
-        column(ttlColumn, RecordRow::ttl);
-        column(statusColumn, RecordRow::status);
-        kindColumn.setCellValueFactory(cell -> new SimpleObjectProperty<>(cell.getValue().kind()));
-        kindColumn.setCellFactory(column -> new TableCell<>() {
-            @Override protected void updateItem(RecordRow.Kind kind, boolean empty) {
-                super.updateItem(kind, empty);
-                setText(empty || kind == null ? null : switch (kind) { case ENFORCED -> "✓"; case REMOVAL -> "−"; case LIVE -> "●"; });
-                setTooltip(empty || kind == null ? null : new Tooltip(switch (kind) {
-                    case ENFORCED -> "Enforced entry"; case REMOVAL -> "Enforced removal"; case LIVE -> "Live entry";
-                }));
-                setAccessibleText(getTooltip() == null ? "" : getTooltip().getText());
-            }
+        records = new ZoneRecordGrid(recordTable, this::showRecord, desk.getGridConfiguration());
+        records.grid().setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.ENTER && event.getTarget() == records.grid()) editRecord();
         });
-        recordTable.setRowFactory(table -> {
-            TableRow<RecordRow> row = new TableRow<>() {
-                @Override protected void updateItem(RecordRow item, boolean empty) {
-                    super.updateItem(item, empty);
-                    pseudoClassStateChanged(PseudoClass.getPseudoClass("file-entry"), !empty && item != null && item.kind() == RecordRow.Kind.ENFORCED);
-                    pseudoClassStateChanged(PseudoClass.getPseudoClass("removal-entry"), !empty && item != null && item.kind() == RecordRow.Kind.REMOVAL);
-                    pseudoClassStateChanged(PseudoClass.getPseudoClass("live-entry"), !empty && item != null && item.kind() == RecordRow.Kind.LIVE);
-                }
-            };
-            row.setOnMouseClicked(event -> { if (event.getClickCount() == 2 && !row.isEmpty()) showRecord(row.getItem()); });
-            return row;
-        });
-        recordTable.setOnKeyPressed(event -> { if (event.getCode() == KeyCode.ENTER) editRecord(); });
         showRows();
         zoneRoot.setUserData(this);
         icon(dryRunFileButton, "Dry-run file", "M2,1 H11 L15,5 V16 H2 Z M10,1 V6 H15 M5,9 H11 M5,12 H9");
@@ -160,8 +126,14 @@ public class ZoneController implements HasViewModel {
         reload(true);
     }
 
+    private boolean activationPending;
     void activated() {
-        if (!liveRequested) refreshLive();
+        if (liveRequested || activationPending || closed) return;
+        activationPending = true;
+        records.ready().whenComplete((ok,error) -> Platform.runLater(() -> {
+            activationPending = false;
+            if (!closed && error == null && !liveRequested) refreshLive();
+        }));
     }
 
     void setClosing(boolean closing) {
@@ -177,21 +149,25 @@ public class ZoneController implements HasViewModel {
         status.accept("");
         closed = true;
         ++loadSequence;
+        records.close();
     }
 
     java.util.concurrent.CompletionStage<Boolean> pendingOperation() { return operation; }
 
-    private static void column(TableColumn<RecordRow, String> column, Function<RecordRow, String> value) {
-        column.setCellValueFactory(cell -> new ReadOnlyStringWrapper(value.apply(cell.getValue())));
-    }
-
     @FXML public void refreshLive() {
+        if (!records.ready().toCompletableFuture().isDone() || records.ready().toCompletableFuture().isCompletedExceptionally()) {
+            liveStatus.setText("Restore or reset grid settings before loading records."); return;
+        }
         if (editor.isApplying()) return;
         if (editor.isDirty()) { note(Message.Severity.WARN, "Save zone settings before refreshing live DNS."); return; }
         refreshUsingSavedSettings();
     }
 
     void refreshUsingSavedSettings() {
+        if (closed) return;
+        if (!records.ready().toCompletableFuture().isDone() || records.ready().toCompletableFuture().isCompletedExceptionally()) {
+            activated(); return;
+        }
         if (editor.isApplying()) return;
         liveRequested = true;
         ZoneEditor opened = editor;
@@ -229,12 +205,17 @@ public class ZoneController implements HasViewModel {
     }
 
     private void showRows() {
-        recordTable.getItems().setAll(RecordRow.merge(definition(), liveSnapshot));
+        var merged = RecordRow.merge(definition(), liveSnapshot);
+        records.show(merged);
+        // Mutate the shared observable list installed by the ViewModel.
+        @SuppressWarnings("unchecked")
+        var rows = (javafx.collections.ObservableList<RecordRow>) viewModel.property("recordRows").getValue();
+        rows.setAll(merged);
     }
 
     @FXML public void addRecord() { showRecord(null); }
     @FXML public void editRecord() {
-        RecordRow selected = recordTable.getSelectionModel().getSelectedItem();
+        RecordRow selected = records.grid().selectedElementProperty().get();
         if (selected == null) { note(Message.Severity.WARN, "Select a record to view its details."); return; }
         showRecord(selected);
     }
