@@ -11,6 +11,7 @@ import de.neitzel.fx.i18n.Localizer;
 import java.util.Locale;
 
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -58,6 +59,7 @@ public class DnsCheckFxApp extends Application {
         LoadedView loaded = ViewLoader.load(
                 CatalogController.class.getResource("Catalog.fxml"), desk.catalog(), context);
         stage.setTitle("DNSCheck");
+        stage.getIcons().add(new Image(DnsCheckFxApp.class.getResource("/icon.png").toExternalForm()));
         stage.setScene(new Scene(loaded.getRoot()));
         stage.show();
         context.getComponent(CatalogController.class).start(stage);
