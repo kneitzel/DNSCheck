@@ -173,7 +173,17 @@
                                     <fileset dir="${project.build.directory}/libs" includes="*.jar"/>
                                 </copy>
                                 <delete dir="${project.build.directory}/app"/>
-                                <exec executable="${java.home}/bin/jpackage" failonerror="true">
+                                <condition property="jpackage.icon" value="${project.basedir}/src/main/packaging/icons/app.icns">
+                                    <os family="mac"/>
+                                </condition>
+                                <condition property="jpackage.icon" value="${project.basedir}/src/main/packaging/icons/app.ico">
+                                    <os family="windows"/>
+                                </condition>
+                                <property name="jpackage.icon" value="${project.basedir}/src/main/resources/icon.png"/>
+                                <condition property="jpackage.executable" value="${java.home}/bin/jpackage.exe" else="${java.home}/bin/jpackage">
+                                    <os family="windows"/>
+                                </condition>
+                                <exec executable="${jpackage.executable}" failonerror="true">
                                     <arg value="--type"/>
                                     <arg value="app-image"/>
                                     <arg value="--name"/>
@@ -190,6 +200,8 @@
                                     <arg value="--enable-native-access=ALL-UNNAMED"/>
                                     <arg value="--dest"/>
                                     <arg value="${project.build.directory}/app"/>
+                                    <arg value="--icon"/>
+                                    <arg value="${jpackage.icon}"/>
                                 </exec>
                             </target>
                         </configuration>
