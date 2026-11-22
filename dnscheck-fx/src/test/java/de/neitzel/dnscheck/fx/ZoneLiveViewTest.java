@@ -421,6 +421,7 @@ class ZoneLiveViewTest {
                     return super.getComponent(type);
                 }
             };
+            DnsCheckFxApp.configureLanguage(context, java.util.Locale.ENGLISH);
             Desk desk = context.getComponent(Desk.class);
             var configuration = suppliedConfiguration == null ? de.neitzel.gson.grid.GridSetupFiles.forApplication("DNSCheck", temp.resolve("grid-settings")) : suppliedConfiguration;
             gridConfigurations.add(configuration);

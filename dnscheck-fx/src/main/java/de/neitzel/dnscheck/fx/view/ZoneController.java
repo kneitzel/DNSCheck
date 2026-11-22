@@ -1,5 +1,6 @@
 package de.neitzel.dnscheck.fx.view;
 
+import de.neitzel.fx.i18n.Messages;
 import de.neitzel.dnscheck.core.model.LiveZone;
 import de.neitzel.dnscheck.core.model.ZoneDefinition;
 import de.neitzel.dnscheck.core.reconcile.ZoneReconciliationResult;
@@ -35,6 +36,7 @@ public class ZoneController implements HasViewModel {
     private java.util.concurrent.CompletableFuture<Boolean> operation =
             java.util.concurrent.CompletableFuture.completedFuture(true);
 
+    @FXML private Messages resources;
     @FXML private VBox zoneRoot;
     @FXML private Label liveStatus;
     @FXML private ComboBox<String> keyFileField;
@@ -62,10 +64,10 @@ public class ZoneController implements HasViewModel {
         });
         showRows();
         zoneRoot.setUserData(this);
-        icon(dryRunFileButton, "Dry-run file", "M2,1 H11 L15,5 V16 H2 Z M10,1 V6 H15 M5,9 H11 M5,12 H9");
-        icon(reconcileFileButton, "Reconcile file", "M2,1 H11 L15,5 V16 H2 Z M10,1 V6 H15 M5,10 L7,13 L12,8");
-        icon(dryRunButton, "Save and dry-run", "M2,1 H13 L16,4 V16 H2 Z M5,1 V6 H12 V1 M5,16 V10 H12 V16");
-        icon(reconcileButton, "Save and reconcile", "M8,1 L3,9 H8 L7,16 L14,6 H9 Z");
+        icon(dryRunFileButton, "zone.dryFile", "M2,1 H11 L15,5 V16 H2 Z M10,1 V6 H15 M5,9 H11 M5,12 H9");
+        icon(reconcileFileButton, "zone.applyFile", "M2,1 H11 L15,5 V16 H2 Z M10,1 V6 H15 M5,10 L7,13 L12,8");
+        icon(dryRunButton, "zone.dry", "M2,1 H13 L16,4 V16 H2 Z M5,1 V6 H12 V1 M5,16 V10 H12 V16");
+        icon(reconcileButton, "zone.apply", "M8,1 L3,9 H8 L7,16 L14,6 H9 Z");
     }
 
     ZoneEditor editor() { return editor; }
@@ -85,10 +87,10 @@ public class ZoneController implements HasViewModel {
         graphic.setContent(path);
         graphic.getStyleClass().add("zone-action-icon");
         button.setGraphic(graphic);
-        button.setAccessibleText(text);
-        button.setOnMouseEntered(event -> status.accept(text));
+        button.accessibleTextProperty().bind(resources.localizer().localeProperty().map(locale -> resources.text(text)));
+        button.setOnMouseEntered(event -> status.accept(button.getAccessibleText()));
         button.setOnMouseExited(event -> status.accept(""));
-        button.focusedProperty().addListener((observable, previous, focused) -> status.accept(focused ? text : ""));
+        button.focusedProperty().addListener((observable, previous, focused) -> status.accept(focused ? button.getAccessibleText() : ""));
     }
 
     void reload(boolean discard) {
@@ -119,7 +121,7 @@ public class ZoneController implements HasViewModel {
 
     @FXML public void reloadFromDisk() {
         if (editor.isDirty()) {
-            Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION, "Discard pending zone settings and reload the file?");
+            Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION, resources.text("dialog.discardAsk"));
             if (zoneRoot.getScene() != null) confirmation.initOwner(zoneRoot.getScene().getWindow());
             if (confirmation.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
         }
@@ -175,7 +177,7 @@ public class ZoneController implements HasViewModel {
         long sequence = ++loadSequence;
         liveSnapshot = null;
         showRows();
-        liveStatus.setText("Loading live DNS from " + definition.nameserver() + "…");
+        liveStatus.setText(resources.text("zone.loading", definition.nameserver()));
         Thread.startVirtualThread(() -> {
             try {
                 LiveZone loaded = zoneFiles.readLive(definition);
@@ -221,7 +223,7 @@ public class ZoneController implements HasViewModel {
     }
 
     protected RecordDialog dialog(RecordRow row) {
-        return new RecordDialog(zoneRoot.getScene() == null ? null : zoneRoot.getScene().getWindow(), editor.getZone(), row);
+        return new RecordDialog(zoneRoot.getScene() == null ? null : zoneRoot.getScene().getWindow(), editor.getZone(), row, resources.localizer().forClass(RecordDialog.class));
     }
 
     private void showRecord(RecordRow row) {

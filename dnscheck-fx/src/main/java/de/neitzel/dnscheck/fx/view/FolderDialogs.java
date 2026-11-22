@@ -1,5 +1,6 @@
 package de.neitzel.dnscheck.fx.view;
 
+import de.neitzel.fx.i18n.Messages;
 import de.neitzel.dnscheck.fx.LocalFileImport;
 import javafx.event.ActionEvent;
 import javafx.scene.control.Alert;
@@ -21,6 +22,7 @@ import java.util.List;
 /** Modal forms for adding files to the current working folder. */
 @RequiredArgsConstructor
 final class FolderDialogs {
+    private final Messages resources;
     private final Window owner;
     private final LocalFileImport imports;
 
@@ -39,15 +41,15 @@ final class FolderDialogs {
         key.setId("newZoneKey");
         key.getItems().setAll(keys);
         if (keys.size() == 1) key.setValue(keys.getFirst());
-        Dialog<ButtonType> dialog = dialog("New zone");
+        Dialog<ButtonType> dialog = dialog(resources.text("dialog.newZone"));
         GridPane fields = fields();
-        field(fields, 0, "Zone name", zone);
-        field(fields, 1, "Nameserver", nameserver);
-        field(fields, 2, "Key file", key);
-        if (keys.isEmpty()) fields.add(new Label("Add a valid BIND key to the working folder first."), 0, 3, 2, 1);
+        field(fields, 0, resources.text("dialog.zoneName"), zone);
+        field(fields, 1, resources.text("dialog.nameserver"), nameserver);
+        field(fields, 2, resources.text("dialog.keyFile"), key);
+        if (keys.isEmpty()) fields.add(new Label(resources.text("dialog.addValidKey")), 0, 3, 2, 1);
         dialog.getDialogPane().setContent(fields);
         Button create = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
-        create.setText("Create");
+        create.setText(resources.text("dialog.create"));
         create.disableProperty().bind(zone.textProperty().isEmpty()
                 .or(nameserver.textProperty().isEmpty()).or(key.valueProperty().isNull()));
         create.addEventFilter(ActionEvent.ACTION, event -> {
@@ -64,7 +66,7 @@ final class FolderDialogs {
     void addKey(Path directory, KeyInstaller install) {
         TextArea content = new TextArea();
         content.setId("bindKeyText");
-        content.setPromptText("Paste BIND key text");
+        content.setPromptText(resources.text("dialog.pasteKey"));
         content.setPrefRowCount(6);
         TextField filename = new TextField();
         filename.setId("bindKeyFilename");
@@ -73,13 +75,13 @@ final class FolderDialogs {
                 filename.setText(imports.keyName(current));
             }
         });
-        Dialog<ButtonType> dialog = dialog("Add key");
+        Dialog<ButtonType> dialog = dialog(resources.text("dialog.addKey"));
         GridPane fields = fields();
-        field(fields, 0, "Filename", filename);
-        field(fields, 1, "BIND key", content);
+        field(fields, 0, resources.text("dialog.filename"), filename);
+        field(fields, 1, resources.text("dialog.bindKey"), content);
         dialog.getDialogPane().setContent(fields);
         Button add = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
-        add.setText("Add");
+        add.setText(resources.text("dialog.add"));
         add.disableProperty().bind(filename.textProperty().isEmpty().or(content.textProperty().isEmpty()));
         add.addEventFilter(ActionEvent.ACTION, event -> {
             try {

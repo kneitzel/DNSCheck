@@ -80,6 +80,17 @@ public class RecentDirectories {
         write(settings);
     }
 
+    public synchronized Locale language() throws IOException {
+        JsonNode value = read().get("language");
+        return value == null || !value.isTextual() ? null : Locale.forLanguageTag(value.textValue());
+    }
+
+    public synchronized void rememberLanguage(Locale locale) throws IOException {
+        ObjectNode settings = read();
+        settings.put("language", locale.toLanguageTag());
+        write(settings);
+    }
+
     /** Application appearance preference, independent of directory and docking layouts. */
     public synchronized String theme() throws IOException {
         JsonNode value = read().get("theme");

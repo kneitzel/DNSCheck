@@ -6,10 +6,7 @@ Views bind to ordinary Java models through the NeitzelLib `fx` module. That modu
 
 ## Build the desktop app
 
-Use a full JDK 25 and Maven. The desktop module declares the public Gitea
-Maven registry and uses NeitzelLib `1.0.1`, including the DataGrid viewport,
-FXML declaration, grouping and saved setup support. Maven resolves the release
-and its transitive library modules from that registry.
+Use a full JDK 25 and Maven. Install NeitzelLib `1.0.2-SNAPSHOT` from the adjacent NeitzelLib checkout with `./mvnw -pl fx,gson -am install`.
 
 From the DNSCheck repository root:
 
@@ -270,3 +267,7 @@ The desktop uses your filesystem and TSIG key access, like the CLI. It does not
 apply the service’s operator login, MFA, or group/zone rights. See the
 [module architecture](../docs/adr/0001-three-module-maven-structure.md) for the
 shared-core boundary and catalog context rules.
+
+## Language
+
+The Language menu offers English and German and remembers the selection for the next start. Menus and subscribed labels update immediately. Reopen a zone view to reload its FXML labels. Catalog resources reside in `DNSCheck*.properties` and beside the catalog and zone FXML documents.

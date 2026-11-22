@@ -1,5 +1,6 @@
 package de.neitzel.dnscheck.fx;
 
+import de.neitzel.fx.i18n.Localizer;
 import de.neitzel.dnscheck.fx.model.CatalogSession;
 import de.neitzel.dnscheck.fx.model.RecordEditor;
 import de.neitzel.dnscheck.fx.model.ZoneEditor;
@@ -66,6 +67,7 @@ class DnsCheckFxLoadsTest {
                     return type == RecentDirectories.class ? type.cast(recent) : super.getComponent(type);
                 }
             };
+            DnsCheckFxApp.configureLanguage(context, java.util.Locale.ENGLISH);
             Desk desk = context.getComponent(Desk.class);
             CatalogSession session = new CatalogSession();
             session.setDirectory("/no/such/zones");
@@ -118,7 +120,10 @@ class DnsCheckFxLoadsTest {
     void zoneFxmlShowsItsGridWithoutRuntimeData() throws Exception {
         onFx(() -> {
             try {
-                var loader = new javafx.fxml.FXMLLoader(ZoneController.class.getResource("Zone.fxml"));
+                var location = ZoneController.class.getResource("Zone.fxml");
+                var languages = new Localizer(java.util.Locale.ENGLISH, java.util.Locale.ENGLISH,
+                        new Localizer.Catalog(DnsCheckFxApp.class, "DNSCheck"));
+                var loader = new javafx.fxml.FXMLLoader(location, languages.forView(location, ZoneController.class));
                 loader.setControllerFactory(type -> new ZoneController(null, null));
                 javafx.scene.Parent root = loader.load();
                 var grid = (de.neitzel.fx.view.DataGrid<?, ?>) root.lookup("#recordTable");

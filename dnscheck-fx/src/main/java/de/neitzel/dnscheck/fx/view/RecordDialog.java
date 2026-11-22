@@ -1,5 +1,6 @@
 package de.neitzel.dnscheck.fx.view;
 
+import de.neitzel.fx.i18n.Messages;
 import de.neitzel.dnscheck.fx.ZoneFiles;
 import de.neitzel.dnscheck.fx.model.RecordChange;
 import de.neitzel.dnscheck.fx.model.RecordEditor;
@@ -22,18 +23,25 @@ public class RecordDialog extends Dialog<RecordChange> {
     private final TextArea rdata = new TextArea();
     private final TextField ttl = new TextField();
     private final TextField pattern = new TextField();
-    private final CheckBox removal = new CheckBox("Removal entry (delete matching records)");
-    private final CheckBox store = new CheckBox("Store entry in domain file (enforce)");
-    private final CheckBox online = new CheckBox("Apply change to live DNS now");
+    private final CheckBox removal = new CheckBox();
+    private final CheckBox store = new CheckBox();
+    private final CheckBox online = new CheckBox();
     private final Label error = new Label();
     private boolean editing;
     private RecordChange validated;
 
     public RecordDialog(Window owner, String zone, RecordRow original) {
+        this(owner, zone, original, de.neitzel.dnscheck.fx.DnsCheckFxApp.languages(null).forClass(RecordDialog.class));
+    }
+
+    RecordDialog(Window owner, String zone, RecordRow original, Messages resources) {
         this.zone = zone;
         this.original = original;
+        online.setText(resources.text("dialog.applyLive"));
+        store.setText(resources.text("dialog.store"));
+        removal.setText(resources.text("dialog.remove"));
         if (owner != null) initOwner(owner);
-        setTitle(original == null ? "New DNS record" : "DNS record details");
+        setTitle(original == null ? resources.text("dialog.newRecord") : resources.text("dialog.details"));
         setResizable(true);
         RecordEditor draft = original == null ? new RecordEditor() : original.stored() != null
                 ? RecordEditor.from(original.stored()) : new RecordEditor();
@@ -51,9 +59,9 @@ public class RecordDialog extends Dialog<RecordChange> {
         rdata.setText(draft.getRdata()); rdata.setId("recordRdata");
         rdata.setPrefRowCount(3); rdata.setWrapText(true);
         ttl.setText(draft.getTtl()); ttl.setId("recordTtl");
-        ttl.setPromptText("Empty: ignore TTL; -1: zone default");
+        ttl.setPromptText(resources.text("dialog.ttlHint"));
         pattern.setText(draft.getRdataPattern()); pattern.setId("recordPattern");
-        pattern.setPromptText("Empty matches all values; * and ? are glob wildcards");
+        pattern.setPromptText(resources.text("dialog.patternHint"));
         removal.setSelected(draft.isDeletionMarker()); removal.setId("recordRemoval");
         store.setSelected(original == null || original.stored() != null); store.setId("recordStore");
         online.setSelected(false); online.setId("recordOnline");
@@ -65,11 +73,11 @@ public class RecordDialog extends Dialog<RecordChange> {
         inputs.setMinWidth(0);
         fields.getColumnConstraints().addAll(labels, inputs);
         rdata.setMinWidth(0);
-        fields.addRow(0, new Label("Name"), name);
-        fields.addRow(1, new Label("Type"), type);
-        fields.addRow(2, new Label("Value"), rdata);
-        fields.addRow(3, new Label("TTL policy"), ttl);
-        fields.addRow(4, new Label("Removal pattern"), pattern);
+        fields.addRow(0, new Label(resources.text("dialog.name")), name);
+        fields.addRow(1, new Label(resources.text("dialog.type")), type);
+        fields.addRow(2, new Label(resources.text("dialog.value")), rdata);
+        fields.addRow(3, new Label(resources.text("dialog.ttl")), ttl);
+        fields.addRow(4, new Label(resources.text("dialog.pattern")), pattern);
         String details = original == null ? "New record in " + zone : original.status() + "\n"
                 + (original.stored() == null ? "Not stored in the domain file."
                     : "File value: " + original.value() + "\nFile TTL policy: " + original.ttl())
@@ -77,14 +85,14 @@ public class RecordDialog extends Dialog<RecordChange> {
                     : "\nLive value: " + original.live().rdata() + "\nLive TTL: " + original.live().ttl());
         Label description = new Label(details);
         description.setWrapText(true); description.setId("recordDetails");
-        Label behavior = new Label("File storage and immediate DNS changes are independent. Unchecking file storage removes an existing file entry; it does not delete live DNS. A removal entry applies its pattern when online changes are selected.");
+        Label behavior = new Label(resources.text("dialog.behavior"));
         behavior.setWrapText(true);
         error.setWrapText(true); error.getStyleClass().add("dns-error"); error.setId("recordError");
         VBox content = new VBox(12, description, fields, removal, store, online, behavior, error);
         content.setPadding(new Insets(12)); content.setPrefWidth(610);
         getDialogPane().setContent(content);
-        ButtonType edit = new ButtonType("Edit", ButtonBar.ButtonData.OTHER);
-        ButtonType apply = new ButtonType("Apply", ButtonBar.ButtonData.OK_DONE);
+        ButtonType edit = new ButtonType(resources.text("dialog.edit"), ButtonBar.ButtonData.OTHER);
+        ButtonType apply = new ButtonType(resources.text("dialog.apply"), ButtonBar.ButtonData.OK_DONE);
         getDialogPane().getButtonTypes().addAll(edit, apply, ButtonType.CANCEL);
         Button editButton = (Button) getDialogPane().lookupButton(edit);
         Button applyButton = (Button) getDialogPane().lookupButton(apply);

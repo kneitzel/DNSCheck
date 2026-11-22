@@ -1,5 +1,7 @@
 package de.neitzel.dnscheck.fx.view;
 
+import de.neitzel.fx.i18n.LanguageMenu;
+import de.neitzel.fx.i18n.Messages;
 import de.neitzel.dnscheck.fx.Attributes;
 import de.neitzel.dnscheck.fx.Desk;
 import de.neitzel.dnscheck.fx.DnsCheckFxApp;
@@ -66,6 +68,8 @@ public class CatalogController implements HasViewModel {
     @FXML private Label zonesHeading;
     @FXML private Label keysHeading;
     @FXML private DockPane editorHost;
+    @FXML private Messages resources;
+    @FXML private MenuBar fileMenuBar;
     @FXML private Menu recentMenu;
     @FXML private Menu themeMenu;
     @FXML private Label themeMessage;
@@ -118,6 +122,24 @@ public class CatalogController implements HasViewModel {
 
     public void start(Stage stage) {
         this.stage = stage;
+        var languages = resources.localizer();
+        fileMenuBar.getMenus().add(LanguageMenu.create(languages, () -> stage,
+                locale -> {
+                    try {
+                        recentDirectories.rememberLanguage(locale);
+                    } catch (IOException failure) {
+                        note(text(failure));
+                    }
+                }, java.util.Locale.ENGLISH, java.util.Locale.GERMAN));
+        var file = fileMenuBar.getMenus().getFirst();
+        file.textProperty().bind(resources.observable("catalog.file"));
+        file.getItems().get(0).textProperty().bind(resources.observable("catalog.open"));
+        file.getItems().get(1).textProperty().bind(resources.observable("catalog.reload"));
+        recentMenu.textProperty().bind(resources.observable("catalog.recent"));
+        themeMenu.textProperty().bind(resources.observable("catalog.theme"));
+        fileMenuBar.getMenus().get(1).textProperty().bind(resources.observable("catalog.view"));
+        zonesHeading.textProperty().bind(resources.observable("catalog.zones"));
+        keysHeading.textProperty().bind(resources.observable("catalog.keys"));
         themes = new de.neitzel.dnscheck.fx.DnsThemes(recentDirectories);
         themes.install(stage.getScene(), themeMenu);
         themeMessage.textProperty().bind(themes.messageProperty());
@@ -147,6 +169,7 @@ public class CatalogController implements HasViewModel {
         layout.setCenter(new DockGroupDefinition("editors"));
         editorHost.setInitialLayout(layout);
         DockingOptions options = new DockingOptions();
+        options.setResourceBundle(resources);
         options.setFallbackTarget(EDITORS);
         options.setFloatingWindowCustomizer(window -> window.setTitle("DNSCheck"));
         options.setBeforeShutdown(request -> {
@@ -193,14 +216,14 @@ public class CatalogController implements HasViewModel {
     private void attemptGridSettingsClose(CompletableFuture<ShutdownDecision> answer) {
         desk.getGridConfiguration().closeAsync().whenComplete((ok,error) -> Platform.runLater(() -> {
             if (error == null) { answer.complete(ShutdownDecision.PROCEED); return; }
-            ButtonType retry = new ButtonType("Retry", ButtonBar.ButtonData.OK_DONE);
-            ButtonType without = new ButtonType("Quit without saving grid settings", ButtonBar.ButtonData.OTHER);
-            ButtonType cancel = new ButtonType("Cancel quit", ButtonBar.ButtonData.CANCEL_CLOSE);
+            ButtonType retry = new ButtonType(resources.text("dialog.retry"), ButtonBar.ButtonData.OK_DONE);
+            ButtonType without = new ButtonType(resources.text("dialog.quitWithoutSaving"), ButtonBar.ButtonData.OTHER);
+            ButtonType cancel = new ButtonType(resources.text("dialog.cancelQuit"), ButtonBar.ButtonData.CANCEL_CLOSE);
             Alert alert = new Alert(Alert.AlertType.ERROR,
                     "Grid settings could not be saved: " + text(error) + "\nZone edits and DNS operations retain their own checks.",
                     retry, without, cancel);
-            alert.setTitle("Unsaved grid settings");
-            alert.setHeaderText("Choose how to finish quitting");
+            alert.setTitle(resources.text("dialog.unsavedGrid"));
+            alert.setHeaderText(resources.text("dialog.finishQuit"));
             alert.initOwner(stage);
             alert.setOnHidden(event -> {
                 if (alert.getResult() == retry) attemptGridSettingsClose(answer);
@@ -300,7 +323,7 @@ public class CatalogController implements HasViewModel {
 
     protected Path chooseDirectory() {
         DirectoryChooser chooser = new DirectoryChooser();
-        chooser.setTitle("Open DNSCheck directory");
+        chooser.setTitle(resources.text("dialog.openDirectory"));
         if (!desk.catalog().getDirectory().isBlank()) {
             var current = desk.requestedDirectory().toFile();
             if (current.isDirectory()) chooser.setInitialDirectory(current);
@@ -396,9 +419,9 @@ public class CatalogController implements HasViewModel {
                 item.setOnAction(event -> openDirectory(directory));
                 recentMenu.getItems().add(item);
             }
-            if (recentMenu.getItems().isEmpty()) recentPlaceholder("No recent folders");
+            if (recentMenu.getItems().isEmpty()) recentPlaceholder(resources.text("dialog.noRecent"));
         } catch (IOException | RuntimeException failure) {
-            recentPlaceholder("Recent folders unavailable");
+            recentPlaceholder(resources.text("dialog.recentUnavailable"));
             note("Could not read recent folders: " + text(failure));
         }
     }
@@ -447,7 +470,7 @@ public class CatalogController implements HasViewModel {
             dockable.setCloseCheck(request -> {
                 var pending = editor.editor().isApplying() ? editor.pendingOperation()
                         : CompletableFuture.completedFuture(true);
-                return pending.thenApply(success -> success && UnsavedChanges.confirm(model, zoneFiles, request.owner())
+                return pending.thenApply(success -> success && UnsavedChanges.confirm(model, zoneFiles, request.owner(), resources.localizer().forClass(UnsavedChanges.class))
                         ? CloseConsent.ALLOW : CloseConsent.VETO);
             });
             Runnable remove = () -> {
@@ -467,7 +490,7 @@ public class CatalogController implements HasViewModel {
     @FXML public void newZone() {
         if (workingFolder == null) return;
         try {
-            String zone = new FolderDialogs(stage, imports).createZone(workingFolder);
+            String zone = new FolderDialogs(resources.localizer().forClass(FolderDialogs.class), stage, imports).createZone(workingFolder);
             if (zone != null) {
                 refreshCatalog(zoneFiles.load(workingFolder));
                 desk.catalog().getEntries().stream().filter(entry -> entry.getZone().equals(zone))
@@ -479,7 +502,7 @@ public class CatalogController implements HasViewModel {
     }
 
     @FXML public void addKey() {
-        if (workingFolder != null) new FolderDialogs(stage, imports).addKey(workingFolder, this::install);
+        if (workingFolder != null) new FolderDialogs(resources.localizer().forClass(FolderDialogs.class), stage, imports).addKey(workingFolder, this::install);
     }
 
     private void acceptFileDrops(Node node) {

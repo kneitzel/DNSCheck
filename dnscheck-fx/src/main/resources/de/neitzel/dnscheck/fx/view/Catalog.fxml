@@ -18,12 +18,12 @@
     <top>
         <VBox spacing="6">
             <MenuBar fx:id="fileMenuBar">
-                <Menu text="_File">
-                    <MenuItem fx:id="openDirectoryMenu" text="_Open…" onAction="#browse" accelerator="Shortcut+O"/>
-                    <MenuItem fx:id="reloadMenu" text="_Reload" onAction="#reload" accelerator="Shortcut+R"/>
-                    <Menu fx:id="recentMenu" text="_Recent" onShowing="#refreshRecent"/>
+                <Menu text="%catalog.file">
+                    <MenuItem fx:id="openDirectoryMenu" text="%catalog.open" onAction="#browse" accelerator="Shortcut+O"/>
+                    <MenuItem fx:id="reloadMenu" text="%catalog.reload" onAction="#reload" accelerator="Shortcut+R"/>
+                    <Menu fx:id="recentMenu" text="%catalog.recent" onShowing="#refreshRecent"/>
                 </Menu>
-                <Menu text="_View"><Menu fx:id="themeMenu" text="_Theme"/></Menu>
+                <Menu text="%catalog.view"><Menu fx:id="themeMenu" text="%catalog.theme"/></Menu>
             </MenuBar>
             <Label fx:id="themeMessage" wrapText="true" styleClass="dns-error" style="-fx-padding: 0 12;"/>
             <Label fx:id="directoryLabel" style="-fx-padding: 0 12 6 12;"/>
@@ -34,40 +34,40 @@
             <TabPane fx:id="catalogTabs" side="LEFT" rotateGraphic="false" tabClosingPolicy="UNAVAILABLE"
                      minWidth="160" prefWidth="240" styleClass="catalog-tabs">
                 <Tab id="zonesTab">
-                    <tooltip><Tooltip text="Zones"/></tooltip>
+                    <tooltip><Tooltip text="%catalog.zones"/></tooltip>
                     <graphic>
-                        <SVGPath styleClass="catalog-icon" accessibleText="Zones"
+                        <SVGPath styleClass="catalog-icon" accessibleText="%catalog.zones"
                                  content="M 10 1 A 9 9 0 1 0 10 19 A 9 9 0 1 0 10 1 M 1 10 H 19 M 10 1 C 4 6 4 14 10 19 M 10 1 C 16 6 16 14 10 19"/>
                     </graphic>
                     <VBox spacing="8" styleClass="catalog-content">
                         <HBox alignment="CENTER_LEFT">
-                            <Label fx:id="zonesHeading" text="Zones"/>
+                            <Label fx:id="zonesHeading" text="%catalog.zones"/>
                             <Region HBox.hgrow="ALWAYS"/>
                             <Button fx:id="newZoneButton" text="+" onAction="#newZone" disable="true"
-                                    accessibleText="New zone" styleClass="catalog-add">
-                                <tooltip><Tooltip text="New zone"/></tooltip>
+                                    accessibleText="%catalog.newZone" styleClass="catalog-add">
+                                <tooltip><Tooltip text="%catalog.newZone"/></tooltip>
                             </Button>
                         </HBox>
                         <ListView fx:id="zonesList" VBox.vgrow="ALWAYS"/>
                     </VBox>
                 </Tab>
                 <Tab id="keysTab">
-                    <tooltip><Tooltip text="Keys"/></tooltip>
+                    <tooltip><Tooltip text="%catalog.keys"/></tooltip>
                     <graphic>
-                        <SVGPath styleClass="catalog-icon" accessibleText="Keys"
+                        <SVGPath styleClass="catalog-icon" accessibleText="%catalog.keys"
                                  content="M 12 1 A 6 6 0 1 0 12 13 A 6 6 0 1 0 12 1 M 8 11 L 1 18 V 21 H 4 V 18 H 7 V 15 L 9 13 M 14 5 A 1 1 0 1 0 14 7 A 1 1 0 1 0 14 5"/>
                     </graphic>
                     <VBox spacing="8" styleClass="catalog-content">
                         <HBox alignment="CENTER_LEFT">
-                            <Label fx:id="keysHeading" text="Keys"/>
+                            <Label fx:id="keysHeading" text="%catalog.keys"/>
                             <Region HBox.hgrow="ALWAYS"/>
                             <Button fx:id="addKeyButton" text="+" onAction="#addKey" disable="true"
-                                    accessibleText="Add key" styleClass="catalog-add">
-                                <tooltip><Tooltip text="Add key"/></tooltip>
+                                    accessibleText="%catalog.addKey" styleClass="catalog-add">
+                                <tooltip><Tooltip text="%catalog.addKey"/></tooltip>
                             </Button>
                         </HBox>
                         <ListView fx:id="keysList" VBox.vgrow="ALWAYS">
-                            <placeholder><Label text="No keys in this folder" wrapText="true"/></placeholder>
+                            <placeholder><Label text="%catalog.noKeys" wrapText="true"/></placeholder>
                         </ListView>
                     </VBox>
                 </Tab>

@@ -20,17 +20,17 @@
     </fx:define>
     <GridPane hgap="8" vgap="6">
         <columnConstraints><ColumnConstraints minWidth="110"/><ColumnConstraints hgrow="ALWAYS" minWidth="120"/></columnConstraints>
-        <Label text="Zone" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <Label text="%zone.zone" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
         <Label fx:id="zoneLabel" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-        <Label text="Nameserver" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <Label text="%zone.nameserver" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
         <TextField fx:id="nameserverField" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-        <Label text="Key file" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <Label text="%zone.keyFile" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
         <ComboBox fx:id="keyFileField" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
     </GridPane>
     <HBox spacing="12">
-        <Label text="✓ Enforced entry" styleClass="file-legend"/>
-        <Label text="− Enforced removal" styleClass="removal-legend"/>
-        <Label text="● Live only" styleClass="live-legend"/>
+        <Label text="%zone.enforced" styleClass="file-legend"/>
+        <Label text="%zone.removal" styleClass="removal-legend"/>
+        <Label text="%zone.liveOnly" styleClass="live-legend"/>
     </HBox>
     <Label fx:id="liveStatus" wrapText="true"/>
     <DataGrid fx:id="recordTable" prefHeight="350" VBox.vgrow="ALWAYS"
@@ -38,34 +38,34 @@
               groupsCollapsed="true" inactiveGroupHistoryLimit="1000"
               setupId="dnscheck.zone-records" setupVersion="1">
         <columns>
-            <DataGridColumn id="kind" attribute="entry" groupAttribute="kind" header="Entry" width="150"
+            <DataGridColumn id="kind" attribute="entry" groupAttribute="kind" header="%zone.entry" width="150"
                             checklist="SOURCE_WIDE" type="dnscheck.record.kind.text.v1">
-                <groupLabels ENFORCED="✓ Enforced entry" REMOVAL="− Enforced removal" LIVE="● Live only"/>
+                <groupLabels ENFORCED="%zone.enforced" REMOVAL="%zone.removal" LIVE="%zone.liveOnly"/>
             </DataGridColumn>
-            <DataGridColumn id="name" header="Name" width="190"
+            <DataGridColumn id="name" header="%zone.name" width="190"
                             checklist="SOURCE_WIDE" type="dnscheck.record.name.text.v1"/>
-            <DataGridColumn id="type" header="Type" width="120"
+            <DataGridColumn id="type" header="%zone.type" width="120"
                             checklist="SOURCE_WIDE" type="dnscheck.record.type.text.v1"/>
-            <DataGridColumn id="value" header="File / live value" width="280"
+            <DataGridColumn id="value" header="%zone.value" width="280"
                             checklist="SOURCE_WIDE" type="dnscheck.record.value.text.v1"/>
-            <DataGridColumn id="ttl" header="TTL policy / live TTL" width="160"
+            <DataGridColumn id="ttl" header="%zone.ttl" width="160"
                             checklist="SOURCE_WIDE" type="dnscheck.record.ttl.text.v1"/>
-            <DataGridColumn id="status" header="Status" width="190"
+            <DataGridColumn id="status" header="%zone.status" width="190"
                             checklist="SOURCE_WIDE" type="dnscheck.record.status.text.v1"/>
         </columns>
     </DataGrid>
     <FlowPane hgap="8" vgap="6">
-        <Button text="New record…" onAction="#addRecord"/>
-        <Button text="Record details…" onAction="#editRecord"/>
-        <Button text="Refresh live DNS" onAction="#refreshLive"/>
-        <Button text="Save zone settings" onAction="#save"/>
+        <Button text="%zone.newRecord" onAction="#addRecord"/>
+        <Button text="%zone.details" onAction="#editRecord"/>
+        <Button text="%zone.refresh" onAction="#refreshLive"/>
+        <Button text="%zone.save" onAction="#save"/>
     </FlowPane>
     <FlowPane hgap="8" vgap="6">
         <Button fx:id="dryRunFileButton" onAction="#dryRunFile"/>
         <Button fx:id="reconcileFileButton" onAction="#reconcileFile"/>
         <Button fx:id="dryRunButton" onAction="#dryRun"/>
         <Button fx:id="reconcileButton" onAction="#reconcile"/>
-        <Button text="Reload from disk" onAction="#reloadFromDisk"/>
+        <Button text="%zone.reload" onAction="#reloadFromDisk"/>
     </FlowPane>
     <TextArea fx:id="outcomeArea" editable="false" wrapText="true" prefRowCount="3"/>
 </VBox>

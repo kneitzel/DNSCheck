@@ -391,6 +391,7 @@ class CatalogLocationTest {
                     return super.getComponent(type);
                 }
             };
+            DnsCheckFxApp.configureLanguage(context, java.util.Locale.ENGLISH);
             Desk desk = context.getComponent(Desk.class);
             CatalogSession session = new CatalogSession();
             session.setDirectory(directoryA.toString());

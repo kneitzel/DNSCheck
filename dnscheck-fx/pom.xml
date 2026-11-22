@@ -18,7 +18,7 @@
     <properties>
         <javafx.version>27.0.1</javafx.version>
         <javafx.maven.plugin>0.0.8</javafx.maven.plugin>
-        <neitzellib.version>1.0.1</neitzellib.version>
+        <neitzellib.version>1.0.2-SNAPSHOT</neitzellib.version>
         <lombok.version>1.18.48</lombok.version>
         <main.class>de.neitzel.dnscheck.fx.Main</main.class>
         <jpackage.skip>false</jpackage.skip>
