@@ -15,11 +15,16 @@
     <name>DNSCheck CLI</name>
     <description>Command-line tool for manual zone reconciliation</description>
 
+    <properties>
+        <!-- Plugin versions -->
+        <maven.shade.plugin>3.6.2</maven.shade.plugin>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>6.1.3</version>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -47,7 +52,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.5.1</version>
+                <version>${maven.jar.plugin}</version>
                 <configuration>
                     <archive>
                         <manifest>
@@ -59,7 +64,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.6.2</version>
+                <version>${maven.shade.plugin}</version>
                 <executions>
                     <execution>
                         <phase>package</phase>

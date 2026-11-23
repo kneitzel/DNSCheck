@@ -16,14 +16,20 @@
     <description>JavaFX desktop application for zone definitions and reconciliation</description>
 
     <properties>
-        <javafx.version>27.0.1</javafx.version>
-        <javafx.maven.plugin>0.0.8</javafx.maven.plugin>
-        <neitzellib.version>1.0.2-SNAPSHOT</neitzellib.version>
-        <lombok.version>1.18.48</lombok.version>
         <main.class>de.neitzel.dnscheck.fx.Main</main.class>
         <jpackage.skip>false</jpackage.skip>
         <!-- macOS jpackage requires a positive first version component. -->
         <jpackage.app.version>1.0</jpackage.app.version>
+
+        <!-- Dependency versions -->
+        <javafx.version>27.0.1</javafx.version>
+        <lombok.version>1.18.48</lombok.version>
+        <neitzellib.version>1.0.2-SNAPSHOT</neitzellib.version>
+
+        <!-- Plugin versions -->
+        <javafx.maven.plugin>0.0.8</javafx.maven.plugin>
+        <maven.antrun.plugin>3.2.0</maven.antrun.plugin>
+        <maven.dependency.plugin>3.11.0</maven.dependency.plugin>
     </properties>
 
     <repositories>
@@ -77,13 +83,13 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>5.24.0</version>
+            <version>${mockito.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>6.1.3</version>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -118,7 +124,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.5.1</version>
+                <version>${maven.jar.plugin}</version>
                 <configuration>
                     <archive>
                         <manifest>
@@ -132,7 +138,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.11.0</version>
+                <version>${maven.dependency.plugin}</version>
                 <executions>
                     <execution>
                         <id>copy-dependencies</id>
@@ -154,7 +160,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
-                <version>3.2.0</version>
+                <version>${maven.antrun.plugin}</version>
                 <executions>
                     <execution>
                         <id>package-desktop-app</id>
