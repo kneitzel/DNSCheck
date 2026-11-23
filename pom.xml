@@ -25,17 +25,24 @@
 
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
-        <quarkus.platform.version>3.40.1.2</quarkus.platform.version>
 
+        <!-- Dependency versions -->
+        <dnscheck-core.version>0.1.0-SNAPSHOT</dnscheck-core.version>
         <dnsjava.version>3.7.1</dnsjava.version>
-        <jackson.version>2.23.0</jackson.version>
-        <picocli.version>4.7.7</picocli.version>
-        <slf4j.version>2.0.20</slf4j.version>
-        <quarkus-quinoa.version>2.9.3</quarkus-quinoa.version>
-        <quarkus-openapi-generator.version>2.24.0</quarkus-openapi-generator.version>
         <hsqldb.version>2.7.4</hsqldb.version>
+        <jackson.version>2.23.0</jackson.version>
+        <junit.version>6.1.3</junit.version>
+        <mockito.version>5.24.0</mockito.version>
+        <picocli.version>4.7.7</picocli.version>
+        <quarkus-openapi-generator.version>2.24.0</quarkus-openapi-generator.version>
+        <quarkus-quinoa.version>2.9.3</quarkus-quinoa.version>
+        <quarkus.platform.version>3.40.1.2</quarkus.platform.version>
+        <slf4j.version>2.0.20</slf4j.version>
         <swagger-request-validator.version>2.44.9</swagger-request-validator.version>
 
+        <!-- Plugin versions -->
+        <maven.compiler.plugin>3.16.0</maven.compiler.plugin>
+        <maven.jar.plugin>3.5.1</maven.jar.plugin>
         <surefire-plugin.version>3.6.1</surefire-plugin.version>
     </properties>
 
@@ -52,7 +59,7 @@
             <dependency>
                 <groupId>de.neitzel</groupId>
                 <artifactId>dnscheck-core</artifactId>
-                <version>0.1.0-SNAPSHOT</version>
+                <version>${dnscheck-core.version}</version>
             </dependency>
 
             <dependency>
@@ -117,7 +124,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.16.0</version>
+                    <version>${maven.compiler.plugin}</version>
                     <configuration>
                         <release>${maven.compiler.release}</release>
                     </configuration>
